@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Effect, ImageBounds, EffectType } from '../types';
 import lottie from 'lottie-web';
+import ReactEffects from './ReactEffects';
 
 interface EffectRendererProps {
   effect: Effect;
@@ -10,16 +11,44 @@ interface EffectRendererProps {
   zoom: { level: number; panX: number; panY: number };
 }
 
-// URLs de animaciones Lottie (puedes reemplazarlas con tus propias animaciones)
+// Configuración de efectos - Elige el tipo de animación que quieres usar
+const USE_REACT_EFFECTS = true; // Cambia a true para usar animaciones React (100% local)
+
+// Recursos de efectos - URLs externas O rutas locales (/public/effects/...)
 const EFFECT_URLS: Record<string, string> = {
-  fire: '', // Vacío = usar animación canvas
-  ice: '',
-  poison: '',
-  lightning: '',
-  magic: '',
-  wind: '',
-  water: '',
-  darkness: '',
+  // 🔥 FUENTE: Lottie Files (externo) - O cambia a '/effects/svg/fire.svg' para local
+  fire: 'https://assets1.lottiefiles.com/packages/lf20_4dl0t8tb.json',
+
+  // ❄️ FUENTE: Lottie Files (externo) - O cambia a '/effects/svg/ice.svg' para local
+  ice: 'https://assets2.lottiefiles.com/packages/lf20_tGjH5A.json',
+
+  // ☠️ FUENTE: Lottie Files (externo) - O cambia a '/effects/gifs/poison.gif' para local
+  poison: 'https://assets10.lottiefiles.com/packages/lf20_8p5qh.json',
+
+  // ⚡ FUENTE: Lottie Files (externo)
+  lightning: 'https://assets2.lottiefiles.com/packages/lf20_kkflmt.json',
+
+  // ✨ FUENTE: Lottie Files (externo)
+  magic: 'https://assets2.lottiefiles.com/packages/lf20_dn6x7u.json',
+
+  // 💨 FUENTE: Lottie Files (temporal)
+  wind: 'https://assets2.lottiefiles.com/packages/lf20_8p5qh.json',
+
+  // 🌊 FUENTE: Lottie Files (externo)
+  water: 'https://assets2.lottiefiles.com/packages/lf20_n6t0j8.json',
+
+  // 🌑 FUENTE: Lottie Files (temporal)
+  darkness: 'https://assets1.lottiefiles.com/packages/lf20_4dl0t8tb.json',
+};
+
+// Función auxiliar para detectar tipo de archivo
+const getEffectType = (url: string): 'lottie' | 'gif' | 'svg' | 'canvas' | 'react' => {
+  if (USE_REACT_EFFECTS) return 'react';
+  if (!url || url === '') return 'canvas';
+  if (url.endsWith('.json') || url.includes('lottiefiles.com') || url.includes('lottie.host')) return 'lottie';
+  if (url.endsWith('.gif')) return 'gif';
+  if (url.endsWith('.svg')) return 'svg';
+  return 'canvas'; // fallback a canvas
 };
 
 // Función para crear animaciones canvas personalizadas
@@ -87,74 +116,167 @@ function animateEffect(ctx: CanvasRenderingContext2D, type: EffectType, width: n
 }
 
 function drawFire(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, frame: number) {
-  const time = frame * 0.1;
-  const flames = 5;
-  
+  const time = frame * 0.08;
+  const flames = 7;
+
+  // Base del fuego
+  const baseGradient = ctx.createRadialGradient(x, y + h * 0.3, 0, x, y + h * 0.3, w * 0.6);
+  baseGradient.addColorStop(0, `rgba(255, 150, 0, 0.8)`);
+  baseGradient.addColorStop(0.7, `rgba(255, 80, 0, 0.4)`);
+  baseGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+  ctx.fillStyle = baseGradient;
+  ctx.beginPath();
+  ctx.ellipse(x, y + h * 0.2, w * 0.4, h * 0.6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
   for (let i = 0; i < flames; i++) {
     const angle = (i / flames) * Math.PI * 2 + time;
-    const radius = (w / 3) * (0.7 + Math.sin(time + i) * 0.3);
-    const flameX = x + Math.cos(angle) * radius * 0.3;
-    const flameY = y + Math.sin(angle) * radius * 0.3 + Math.sin(time * 2 + i) * 5;
-    
+    const radius = (w / 4) * (0.8 + Math.sin(time * 1.5 + i) * 0.4);
+    const flameX = x + Math.cos(angle) * radius * 0.5;
+    const flameY = y + Math.sin(angle) * radius * 0.5 + Math.sin(time * 2.5 + i) * 8;
+
+    // Gradiente de llama individual
     const gradient = ctx.createRadialGradient(flameX, flameY, 0, flameX, flameY, radius);
-    gradient.addColorStop(0, `rgba(255, ${100 + Math.sin(time + i) * 50}, 0, 0.9)`);
-    gradient.addColorStop(0.5, `rgba(255, ${50 + Math.sin(time + i) * 30}, 0, 0.5)`);
-    gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-    
+    const hue = 20 + Math.sin(time + i) * 10; // Naranja-rojizo
+    gradient.addColorStop(0, `hsla(${hue}, 100%, 60%, 0.9)`);
+    gradient.addColorStop(0.4, `hsla(${hue + 10}, 100%, 50%, 0.6)`);
+    gradient.addColorStop(0.8, `hsla(${hue + 20}, 80%, 40%, 0.2)`);
+    gradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+
     ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.arc(flameX, flameY, radius, 0, Math.PI * 2);
     ctx.fill();
   }
+
+  // Chispas
+  for (let i = 0; i < 3; i++) {
+    const sparkX = x + (Math.random() - 0.5) * w * 0.8;
+    const sparkY = y + Math.random() * h * 0.4;
+    const sparkSize = 1 + Math.random() * 2;
+
+    ctx.fillStyle = `rgba(255, 255, 100, ${0.6 + Math.random() * 0.4})`;
+    ctx.beginPath();
+    ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 function drawIce(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, frame: number) {
-  const time = frame * 0.05;
-  const particles = 8;
-  
+  const time = frame * 0.06;
+  const particles = 10;
+
+  // Aura fría
+  const auraGradient = ctx.createRadialGradient(x, y, 0, x, y, w * 0.7);
+  auraGradient.addColorStop(0, `rgba(200, 240, 255, 0.3)`);
+  auraGradient.addColorStop(0.7, `rgba(173, 216, 230, 0.1)`);
+  auraGradient.addColorStop(1, 'rgba(173, 216, 230, 0)');
+  ctx.fillStyle = auraGradient;
+  ctx.beginPath();
+  ctx.arc(x, y, w * 0.6, 0, Math.PI * 2);
+  ctx.fill();
+
   for (let i = 0; i < particles; i++) {
     const angle = (i / particles) * Math.PI * 2 + time;
-    const radius = (w / 3) * (0.5 + Math.sin(time * 2 + i) * 0.3);
+    const radius = (w / 3) * (0.6 + Math.sin(time * 1.5 + i) * 0.4);
     const particleX = x + Math.cos(angle) * radius;
     const particleY = y + Math.sin(angle) * radius;
-    
-    ctx.fillStyle = `rgba(173, 216, 230, ${0.6 + Math.sin(time + i) * 0.4})`;
-    ctx.beginPath();
-    ctx.arc(particleX, particleY, 3 + Math.sin(time + i) * 2, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Líneas de hielo
-    ctx.strokeStyle = `rgba(200, 230, 255, ${0.4 + Math.sin(time + i) * 0.3})`;
+
+    // Cristales de hielo
+    ctx.save();
+    ctx.translate(particleX, particleY);
+    ctx.rotate(time + i);
+
+    // Cristal hexagonal
+    ctx.fillStyle = `rgba(200, 240, 255, ${0.7 + Math.sin(time + i) * 0.3})`;
+    ctx.strokeStyle = `rgba(150, 200, 255, ${0.5 + Math.sin(time + i) * 0.3})`;
     ctx.lineWidth = 1;
+
     ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(particleX, particleY);
+    for (let j = 0; j < 6; j++) {
+      const hexAngle = (j / 6) * Math.PI * 2;
+      const hexX = Math.cos(hexAngle) * (4 + Math.sin(time + i) * 2);
+      const hexY = Math.sin(hexAngle) * (4 + Math.sin(time + i) * 2);
+      if (j === 0) ctx.moveTo(hexX, hexY);
+      else ctx.lineTo(hexX, hexY);
+    }
+    ctx.closePath();
+    ctx.fill();
     ctx.stroke();
+
+    ctx.restore();
   }
+
+  // Brillo central
+  const centerGradient = ctx.createRadialGradient(x, y, 0, x, y, w * 0.3);
+  centerGradient.addColorStop(0, `rgba(255, 255, 255, ${0.4 + Math.sin(time * 2) * 0.2})`);
+  centerGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  ctx.fillStyle = centerGradient;
+  ctx.beginPath();
+  ctx.arc(x, y, w * 0.2, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawPoison(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, frame: number) {
-  const time = frame * 0.08;
-  const bubbles = 6;
-  
+  const time = frame * 0.07;
+  const bubbles = 8;
+
+  // Niebla tóxica de fondo
+  const mistGradient = ctx.createRadialGradient(x, y, 0, x, y, w * 0.8);
+  mistGradient.addColorStop(0, `rgba(100, 150, 50, 0.2)`);
+  mistGradient.addColorStop(0.6, `rgba(50, 100, 25, 0.1)`);
+  mistGradient.addColorStop(1, 'rgba(25, 50, 0, 0)');
+  ctx.fillStyle = mistGradient;
+  ctx.beginPath();
+  ctx.arc(x, y, w * 0.7, 0, Math.PI * 2);
+  ctx.fill();
+
   for (let i = 0; i < bubbles; i++) {
     const angle = (i / bubbles) * Math.PI * 2 + time;
-    const radius = (w / 4) * (0.6 + Math.sin(time * 1.5 + i) * 0.4);
+    const radius = (w / 4) * (0.7 + Math.sin(time * 1.3 + i) * 0.5);
     const bubbleX = x + Math.cos(angle) * radius;
-    const bubbleY = y + Math.sin(angle) * radius + Math.sin(time * 2 + i) * 3;
-    const bubbleSize = 4 + Math.sin(time + i) * 3;
-    
-    ctx.fillStyle = `rgba(0, ${150 + Math.sin(time + i) * 50}, 0, ${0.7 + Math.sin(time + i) * 0.3})`;
+    const bubbleY = y + Math.sin(angle) * radius + Math.sin(time * 1.8 + i) * 4;
+    const bubbleSize = 5 + Math.sin(time * 1.2 + i) * 3;
+
+    // Burbuja principal
+    const bubbleGradient = ctx.createRadialGradient(bubbleX, bubbleY, 0, bubbleX, bubbleY, bubbleSize);
+    bubbleGradient.addColorStop(0, `rgba(0, ${160 + Math.sin(time + i) * 40}, 0, ${0.8 + Math.sin(time + i) * 0.2})`);
+    bubbleGradient.addColorStop(0.7, `rgba(0, ${120 + Math.sin(time + i) * 30}, 0, ${0.6 + Math.sin(time + i) * 0.2})`);
+    bubbleGradient.addColorStop(1, 'rgba(0, 80, 0, 0)');
+    ctx.fillStyle = bubbleGradient;
     ctx.beginPath();
     ctx.arc(bubbleX, bubbleY, bubbleSize, 0, Math.PI * 2);
     ctx.fill();
-    
-    // Brillo en la burbuja
-    ctx.fillStyle = `rgba(100, 255, 100, ${0.5 + Math.sin(time + i) * 0.3})`;
+
+    // Brillo verde
+    ctx.fillStyle = `rgba(150, 255, 150, ${0.6 + Math.sin(time * 1.5 + i) * 0.3})`;
     ctx.beginPath();
-    ctx.arc(bubbleX - bubbleSize * 0.3, bubbleY - bubbleSize * 0.3, bubbleSize * 0.3, 0, Math.PI * 2);
+    ctx.arc(bubbleX - bubbleSize * 0.4, bubbleY - bubbleSize * 0.4, bubbleSize * 0.4, 0, Math.PI * 2);
     ctx.fill();
+
+    // Partículas tóxicas
+    for (let j = 0; j < 2; j++) {
+      const particleAngle = time * 2 + i * 0.5 + j * Math.PI;
+      const particleRadius = bubbleSize * (0.8 + Math.sin(time * 3 + i + j) * 0.4);
+      const particleX = bubbleX + Math.cos(particleAngle) * particleRadius;
+      const particleY = bubbleY + Math.sin(particleAngle) * particleRadius;
+
+      ctx.fillStyle = `rgba(100, 200, 100, ${0.4 + Math.sin(time * 2 + i + j) * 0.3})`;
+      ctx.beginPath();
+      ctx.arc(particleX, particleY, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
+
+  // Centro pulsante
+  const centerSize = w * 0.15 + Math.sin(time * 2) * w * 0.05;
+  const centerGradient = ctx.createRadialGradient(x, y, 0, x, y, centerSize);
+  centerGradient.addColorStop(0, `rgba(150, 255, 150, ${0.5 + Math.sin(time * 3) * 0.3})`);
+  centerGradient.addColorStop(1, 'rgba(50, 150, 50, 0)');
+  ctx.fillStyle = centerGradient;
+  ctx.beginPath();
+  ctx.arc(x, y, centerSize, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawLightning(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, frame: number) {
@@ -352,59 +474,74 @@ export default function EffectRenderer({
       return; // No renderizar si está fuera de la vista
     }
 
-    // Si hay una URL de animación personalizada, usarla
-    const animationUrl = effect.animationUrl || EFFECT_URLS[effect.type];
+        // Determinar qué tipo de efecto usar
+        const animationUrl = effect.animationUrl || EFFECT_URLS[effect.type];
+        const effectType = getEffectType(animationUrl);
 
-    if (animationUrl) {
-      // Intentar cargar como Lottie (JSON)
-      if (animationUrl.endsWith('.json') || animationUrl.includes('lottie')) {
-        if (animationRef.current) {
-          animationRef.current.destroy();
-        }
-
-        try {
-          animationRef.current = lottie.loadAnimation({
-            container: containerRef.current,
-            renderer: 'svg',
-            loop: true,
-            autoplay: true,
-            path: animationUrl,
-          });
-        } catch (error) {
-          console.warn(`[EffectRenderer] Failed to load Lottie animation for ${effect.type}:`, error);
-        }
-      } else if (animationUrl.endsWith('.gif')) {
-        // Cargar como GIF
-        const img = document.createElement('img');
-        img.src = animationUrl;
-        img.style.width = '100%';
-        img.style.height = '100%';
-        img.style.objectFit = 'contain';
+        // Limpiar contenedor
         if (containerRef.current) {
           containerRef.current.innerHTML = '';
-          containerRef.current.appendChild(img);
         }
-      }
-    } else {
-      // Si no hay URL, crear animación canvas personalizada
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
-        const canvas = document.createElement('canvas');
-        canvas.width = 100;
-        canvas.height = 100;
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
-        containerRef.current.appendChild(canvas);
-        
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          // Ajustar tamaño del canvas al tamaño del efecto
-          canvas.width = effect.width;
-          canvas.height = effect.height;
-          canvasCleanupRef.current = animateEffect(ctx, effect.type, effect.width, effect.height, effect.shape);
+
+        if (effectType === 'react') {
+          // Usar componente React con Framer Motion (100% local)
+          // El componente se renderiza directamente en el return del componente
+          // No necesitamos hacer nada aquí
+        } else if (effectType === 'lottie') {
+          // Cargar animación Lottie
+          if (animationRef.current) {
+            animationRef.current.destroy();
+          }
+
+          try {
+            animationRef.current = lottie.loadAnimation({
+              container: containerRef.current,
+              renderer: 'svg',
+              loop: true,
+              autoplay: true,
+              path: animationUrl,
+            });
+          } catch (error) {
+            console.warn(`[EffectRenderer] Failed to load Lottie animation for ${effect.type}:`, error);
+            // Fallback a canvas
+            renderCanvasFallback();
+          }
+        } else if (effectType === 'gif' || effectType === 'svg') {
+          // Cargar imagen/GIF/SVG
+          const img = document.createElement('img');
+          img.src = animationUrl;
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.objectFit = 'contain';
+          img.onerror = () => {
+            console.warn(`[EffectRenderer] Failed to load ${effectType.toUpperCase()} for ${effect.type}, using canvas fallback`);
+            renderCanvasFallback();
+          };
+          if (containerRef.current) {
+            containerRef.current.appendChild(img);
+          }
+        } else {
+          // Usar animación canvas personalizada
+          renderCanvasFallback();
         }
-      }
-    }
+
+        function renderCanvasFallback() {
+          if (!containerRef.current) return;
+
+          const canvas = document.createElement('canvas');
+          canvas.width = 100;
+          canvas.height = 100;
+          canvas.style.width = '100%';
+          canvas.style.height = '100%';
+          containerRef.current.appendChild(canvas);
+
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            canvas.width = effect.width;
+            canvas.height = effect.height;
+            canvasCleanupRef.current = animateEffect(ctx, effect.type, effect.width, effect.height, effect.shape);
+          }
+        }
 
     return () => {
       if (animationRef.current) {
@@ -440,6 +577,23 @@ export default function EffectRenderer({
   // Aplicar forma con border-radius
   const borderRadius = effect.shape === 'circle' ? '50%' : '0';
 
+  // Si usamos efectos React, renderizar directamente el componente
+  const animationUrl = effect.animationUrl || EFFECT_URLS[effect.type];
+  const effectType = getEffectType(animationUrl);
+
+  if (effectType === 'react') {
+    return (
+      <ReactEffects
+        effect={effect}
+        imageBounds={imageBounds}
+        canvasWidth={canvasWidth}
+        canvasHeight={canvasHeight}
+        zoom={zoom}
+      />
+    );
+  }
+
+  // Para otros tipos de efectos, usar el contenedor normal
   return (
     <div
       ref={containerRef}

@@ -2,33 +2,6 @@ import { useRef, useEffect, useState } from 'react';
 import { GridConfig, Token, ImageBounds, ZoomState, Effect } from '../types';
 import { calculateGridDimensions, drawGrid, drawTokens } from '../utils/canvasRender';
 
-// Función para persistir logs
-const persistLog = (message: string, data?: any) => {
-  const logs = JSON.parse(localStorage.getItem('debug_logs') || '[]');
-  logs.push({ timestamp: Date.now(), message, data });
-  // Mantener solo los últimos 50 logs
-  if (logs.length > 50) logs.shift();
-  localStorage.setItem('debug_logs', JSON.stringify(logs));
-  console.log(message, data);
-};
-
-// Función para mostrar logs guardados
-const showPersistedLogs = () => {
-  const logs = JSON.parse(localStorage.getItem('debug_logs') || '[]');
-  console.log('=== LOGS PERSISTIDOS ===');
-  logs.forEach((log: any, index: number) => {
-    const date = new Date(log.timestamp).toLocaleTimeString();
-    console.log(`${index + 1}. [${date}] ${log.message}`, log.data);
-  });
-  console.log('=== FIN LOGS ===');
-};
-
-// Exponer función global para debugging
-(window as any).showDebugLogs = showPersistedLogs;
-(window as any).clearDebugLogs = () => {
-  localStorage.removeItem('debug_logs');
-  console.log('Logs de debug limpiados');
-};
 
 interface MapCanvasProps {
   mapImage: string | null;
@@ -297,7 +270,6 @@ export default function MapCanvas({
       x: (x - zoom.panX) / zoom.level,
       y: (y - zoom.panY) / zoom.level,
     };
-    persistLog('Coordenadas de clic:', {screenX: x, screenY: y, canvasCoords, effectsCount: effects.length, effects: effects.map(e => ({id: e.id, x: e.x, y: e.y, width: e.width, height: e.height}))});
     const found = effects.find((effect) => {
       let isInside = false;
       if (effect.shape === 'circle') {
@@ -343,7 +315,6 @@ export default function MapCanvas({
 
     // Buscar efecto primero (están encima de los tokens)
     const clickedEffect = findEffectAtPosition(x, y);
-    persistLog('Buscando efecto en canvas, encontrado:', clickedEffect ? clickedEffect.id : 'ninguno');
     
     // Si hay un efecto pendiente para agregar
     if (pendingEffectType && onAddEffectAtPosition) {
@@ -372,7 +343,6 @@ export default function MapCanvas({
     
     // Si se hace clic en un efecto (sin modo pendiente)
     if (clickedEffect) {
-      persistLog('¡Efecto clicado!', clickedEffect.id);
       setIsDragging(true);
       setDragEffectId(clickedEffect.id);
       setDragOffset({

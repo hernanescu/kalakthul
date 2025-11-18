@@ -10,6 +10,7 @@ import GridControls from './components/GridControls';
 import TokenControls from './components/TokenControls';
 import ZoomControls from './components/ZoomControls';
 import EffectControls from './components/EffectControls';
+import CollapsibleSection from './components/CollapsibleSection';
 import EffectRenderer from './components/EffectRenderer';
 import './App.css';
 
@@ -376,39 +377,47 @@ function App() {
             </button>
           </div>
 
-          <GridControls
-            grid={grid}
-            onRowsChange={setRows}
-            onColumnsChange={setColumns}
-            onOpacityChange={setOpacity}
-            onColorChange={setColor}
-            onToggleVisibility={toggleVisibility}
-          />
+              <CollapsibleSection title="Grilla" defaultExpanded={true}>
+                <GridControls
+                  grid={grid}
+                  onRowsChange={setRows}
+                  onColumnsChange={setColumns}
+                  onOpacityChange={setOpacity}
+                  onColorChange={setColor}
+                  onToggleVisibility={toggleVisibility}
+                />
+              </CollapsibleSection>
 
-          <TokenControls
-            selectedToken={selectedToken}
-            onColorChange={handleColorChange}
-            onSizeChange={handleSizeChange}
-            onDelete={handleDeleteToken}
-            onAddToken={handleAddToken}
-          />
+              <CollapsibleSection title="Efectos" defaultExpanded={true}>
+                <EffectControls
+                  selectedEffectType={effects.find(e => e.id === selectedEffectId)?.type || null}
+                  selectedShape={effects.find(e => e.id === selectedEffectId)?.shape || defaultEffectShape}
+                  onAddEffect={handleAddEffect}
+                  onDeleteEffect={handleDeleteEffect}
+                  onShapeChange={handleEffectShapeChange}
+                  onOpacityChange={handleEffectOpacityChange}
+                  selectedOpacity={effects.find(e => e.id === selectedEffectId)?.opacity}
+                />
+              </CollapsibleSection>
 
-          <ZoomControls
-            zoom={zoom}
-            onZoomIn={handleZoomIn}
-            onZoomOut={handleZoomOut}
-            onZoomReset={handleZoomReset}
-          />
+              <CollapsibleSection title="Tokens" defaultExpanded={false}>
+                <TokenControls
+                  selectedToken={selectedToken}
+                  onColorChange={handleColorChange}
+                  onSizeChange={handleSizeChange}
+                  onDelete={handleDeleteToken}
+                  onAddToken={handleAddToken}
+                />
+              </CollapsibleSection>
 
-          <EffectControls
-            selectedEffectType={effects.find(e => e.id === selectedEffectId)?.type || null}
-            selectedShape={effects.find(e => e.id === selectedEffectId)?.shape || defaultEffectShape}
-            onAddEffect={handleAddEffect}
-            onDeleteEffect={handleDeleteEffect}
-            onShapeChange={handleEffectShapeChange}
-            onOpacityChange={handleEffectOpacityChange}
-            selectedOpacity={effects.find(e => e.id === selectedEffectId)?.opacity}
-          />
+              <CollapsibleSection title="Zoom" defaultExpanded={false}>
+                <ZoomControls
+                  zoom={zoom}
+                  onZoomIn={handleZoomIn}
+                  onZoomOut={handleZoomOut}
+                  onZoomReset={handleZoomReset}
+                />
+              </CollapsibleSection>
         </div>
       )}
 
