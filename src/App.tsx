@@ -3,10 +3,11 @@ import { useGrid } from './hooks/useGrid';
 import { useTokens } from './hooks/useTokens';
 import { loadImageAsBase64 } from './utils/canvasUtils';
 import { snapToGrid } from './utils/gridUtils';
-import { MapState, ImageBounds } from './types';
+import { MapState, ImageBounds, ZoomState } from './types';
 import MapCanvas from './components/MapCanvas';
 import GridControls from './components/GridControls';
 import TokenControls from './components/TokenControls';
+import ZoomControls from './components/ZoomControls';
 import './App.css';
 
 const STORAGE_KEY = 'ttrpg-map-state';
@@ -23,13 +24,20 @@ function App() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
+      console.log('[App] Loading from localStorage:', saved ? 'Found data' : 'No data');
       if (saved) {
         const parsed = JSON.parse(saved) as MapState;
+        console.log('[App] Parsed state:', { 
+          hasMapImage: !!parsed.mapImage, 
+          hasImageBounds: !!parsed.imageBounds,
+          hasZoom: !!parsed.zoom,
+          tokensCount: parsed.tokens?.length || 0
+        });
         setInitialState(parsed);
       }
       setIsInitialized(true);
     } catch (error) {
-      console.error('Error loading from localStorage:', error);
+      console.error('[App] Error loading from localStorage:', error);
       setIsInitialized(true);
     }
   }, []);
@@ -48,14 +56,27 @@ function App() {
 
   const [mapImage, setMapImage] = useState<string | null>(initialState?.mapImage || null);
   const [imageBounds, setImageBounds] = useState<ImageBounds | null>(initialState?.imageBounds || null);
+  const [zoom, setZoom] = useState<ZoomState>(
+    initialState?.zoom || { level: 1, panX: 0, panY: 0 }
+  );
 
-  // Sincronizar mapImage y imageBounds cuando se carga el estado inicial
+  console.log('[App] Current state:', {
+    hasMapImage: !!mapImage,
+    hasImageBounds: !!imageBounds,
+    zoom: zoom,
+    isInitialized: isInitialized
+  });
+
+  // Sincronizar mapImage, imageBounds y zoom cuando se carga el estado inicial
   useEffect(() => {
     if (initialState?.mapImage) {
       setMapImage(initialState.mapImage);
     }
     if (initialState?.imageBounds) {
       setImageBounds(initialState.imageBounds);
+    }
+    if (initialState?.zoom) {
+      setZoom(initialState.zoom);
     }
   }, [initialState]);
 
@@ -199,19 +220,42 @@ function App() {
       grid,
       tokens,
       selectedTokenId,
+      zoom,
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (error) {
       console.error('Error saving to localStorage:', error);
     }
-  }, [mapImage, imageBounds, grid, tokens, selectedTokenId, isInitialized]);
+  }, [mapImage, imageBounds, grid, tokens, selectedTokenId, zoom, isInitialized]);
 
   const selectedToken = tokens.find((t) => t.id === selectedTokenId) || null;
 
-  // Memoizar el callback para evitar re-renders innecesarios
+  // Memoizar los callbacks para evitar re-renders innecesarios
   const handleImageBoundsChange = useCallback((bounds: ImageBounds | null) => {
     setImageBounds(bounds);
+  }, []);
+
+  const handleZoomChange = useCallback((newZoom: ZoomState) => {
+    setZoom(newZoom);
+  }, []);
+
+  const handleZoomIn = useCallback(() => {
+    setZoom((prev) => ({
+      ...prev,
+      level: Math.min(4, prev.level * 1.2),
+    }));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((prev) => ({
+      ...prev,
+      level: Math.max(0.25, prev.level / 1.2),
+    }));
+  }, []);
+
+  const handleZoomReset = useCallback(() => {
+    setZoom({ level: 1, panX: 0, panY: 0 });
   }, []);
 
   return (
@@ -230,7 +274,7 @@ function App() {
       {!isPresentationMode && (
         <div className="sidebar">
           <div className="header">
-            <h1>Mapa TTRPG</h1>
+            <h1>Kalak'thuling</h1>
             <button onClick={() => fileInputRef.current?.click()} className="load-map-btn">
               Cargar Mapa
             </button>
@@ -255,6 +299,13 @@ function App() {
             onDelete={handleDeleteToken}
             onAddToken={handleAddToken}
           />
+
+          <ZoomControls
+            zoom={zoom}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onZoomReset={handleZoomReset}
+          />
         </div>
       )}
 
@@ -265,19 +316,30 @@ function App() {
           grid={grid}
           tokens={tokens}
           selectedTokenId={selectedTokenId}
+          zoom={zoom}
           onTokenClick={handleTokenClick}
           onTokenDrag={handleTokenDrag}
           onImageBoundsChange={handleImageBoundsChange}
+          onZoomChange={handleZoomChange}
           canvasDimensions={canvasDimensions}
         />
         {isPresentationMode && (
-          <button
-            onClick={togglePresentationMode}
-            className="exit-presentation-btn"
-            title="Salir del modo presentación (Esc)"
-          >
-            ✕
-          </button>
+          <>
+            <ZoomControls
+              zoom={zoom}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onZoomReset={handleZoomReset}
+              compact={true}
+            />
+            <button
+              onClick={togglePresentationMode}
+              className="exit-presentation-btn"
+              title="Salir del modo presentación (Esc)"
+            >
+              ✕
+            </button>
+          </>
         )}
       </div>
     </div>

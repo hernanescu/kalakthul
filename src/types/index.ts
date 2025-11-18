@@ -16,12 +16,19 @@ export interface GridConfig {
   visible: boolean;
 }
 
+export interface ZoomState {
+  level: number; // Nivel de zoom (1.0 = 100%, 2.0 = 200%, etc.)
+  panX: number; // Desplazamiento horizontal
+  panY: number; // Desplazamiento vertical
+}
+
 export interface MapState {
   mapImage: string | null; // URL o base64 de la imagen
   imageBounds: ImageBounds | null; // Dimensiones y posición de la imagen renderizada
   grid: GridConfig;
   tokens: Token[];
   selectedTokenId: string | null;
+  zoom?: ZoomState; // Estado de zoom (opcional para compatibilidad)
 }
 
 export interface CanvasDimensions {

@@ -30,7 +30,7 @@ export function drawGrid(
 function drawGridOnArea(
   ctx: CanvasRenderingContext2D,
   grid: GridConfig,
-  dimensions: CanvasDimensions,
+  _dimensions: CanvasDimensions,
   areaX: number,
   areaY: number,
   areaWidth: number,
@@ -71,7 +71,7 @@ export function drawTokens(
   tokens: Token[],
   selectedTokenId: string | null,
   dimensions: CanvasDimensions,
-  grid: GridConfig
+  _grid: GridConfig
 ): void {
   tokens.forEach((token) => {
     const radius = (dimensions.cellWidth * token.size) / 2;

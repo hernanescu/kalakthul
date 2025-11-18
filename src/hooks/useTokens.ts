@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Token, GridConfig } from '../types';
+import { Token } from '../types';
 
 const COLORS = [
   '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff',
