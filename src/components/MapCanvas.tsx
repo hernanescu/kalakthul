@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { GridConfig, Token, ImageBounds, ZoomState } from '../types';
+import { GridConfig, Token, ImageBounds, ZoomState, Effect } from '../types';
 import { calculateGridDimensions, drawGrid, drawTokens } from '../utils/canvasRender';
 
 interface MapCanvasProps {
@@ -8,9 +8,15 @@ interface MapCanvasProps {
   grid: GridConfig;
   tokens: Token[];
   selectedTokenId: string | null;
+  effects: Effect[];
+  selectedEffectId: string | null;
+  pendingEffectType: string | null; // Tipo de efecto que se va a agregar
   zoom: ZoomState;
   onTokenClick?: (tokenId: string) => void;
   onTokenDrag?: (tokenId: string, x: number, y: number) => void;
+  onEffectClick?: (effectId: string) => void;
+  onEffectDrag?: (effectId: string, x: number, y: number) => void;
+  onAddEffectAtPosition?: (type: string, startX: number, startY: number, endX: number, endY: number) => void;
   onImageBoundsChange?: (bounds: ImageBounds | null) => void;
   onZoomChange?: (zoom: ZoomState) => void;
   canvasDimensions: { width: number; height: number };
@@ -22,9 +28,15 @@ export default function MapCanvas({
   grid,
   tokens,
   selectedTokenId,
+  effects,
+  selectedEffectId,
+  pendingEffectType,
   zoom,
   onTokenClick,
   onTokenDrag,
+  onEffectClick,
+  onEffectDrag,
+  onAddEffectAtPosition,
   onImageBoundsChange,
   onZoomChange,
   canvasDimensions,
@@ -33,10 +45,15 @@ export default function MapCanvas({
   const imageCacheRef = useRef<{ src: string | null; bounds: ImageBounds | null }>({ src: null, bounds: null });
   const [isDragging, setIsDragging] = useState(false);
   const [dragTokenId, setDragTokenId] = useState<string | null>(null);
+  const [dragEffectId, setDragEffectId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [hoveredTokenId, setHoveredTokenId] = useState<string | null>(null);
+  const [hoveredEffectId, setHoveredEffectId] = useState<string | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [isCreatingEffect, setIsCreatingEffect] = useState(false);
+  const [effectCreationStart, setEffectCreationStart] = useState({ x: 0, y: 0 });
+  const [effectCreationCurrent, setEffectCreationCurrent] = useState({ x: 0, y: 0 });
 
   // Cachear la imagen cargada
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -190,11 +207,34 @@ export default function MapCanvas({
       }
 
       ctx.restore();
+
+      // Dibujar preview de efecto si se está creando (fuera del contexto transformado)
+      if (isCreatingEffect && pendingEffectType && effectCreationStart.x !== 0 && effectCreationStart.y !== 0) {
+        const startScreenX = effectCreationStart.x * safeZoom.level + safeZoom.panX;
+        const startScreenY = effectCreationStart.y * safeZoom.level + safeZoom.panY;
+        const currentScreenX = (effectCreationCurrent.x || effectCreationStart.x) * safeZoom.level + safeZoom.panX;
+        const currentScreenY = (effectCreationCurrent.y || effectCreationStart.y) * safeZoom.level + safeZoom.panY;
+        
+        ctx.save();
+        ctx.strokeStyle = '#ffff00';
+        ctx.fillStyle = 'rgba(255, 255, 0, 0.1)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        const width = Math.abs(currentScreenX - startScreenX);
+        const height = Math.abs(currentScreenY - startScreenY);
+        const centerX = (startScreenX + currentScreenX) / 2;
+        const centerY = (startScreenY + currentScreenY) / 2;
+        ctx.fillRect(centerX - width / 2, centerY - height / 2, width, height);
+        ctx.strokeRect(centerX - width / 2, centerY - height / 2, width, height);
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+
       console.log('[MapCanvas] Render complete');
     };
 
     render();
-  }, [mapImage, imageLoaded, imageBounds, grid, tokens, selectedTokenId, canvasDimensions, zoom, onImageBoundsChange]);
+  }, [mapImage, imageLoaded, imageBounds, grid, tokens, selectedTokenId, canvasDimensions, zoom, onImageBoundsChange, isCreatingEffect, effectCreationStart, effectCreationCurrent, pendingEffectType]);
 
   // Convertir coordenadas del mouse a coordenadas del canvas con zoom
   const screenToCanvas = (screenX: number, screenY: number) => {
@@ -219,6 +259,33 @@ export default function MapCanvas({
     });
   };
 
+  const findEffectAtPosition = (x: number, y: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+
+    const canvasCoords = screenToCanvas(x, y);
+    return effects.find((effect) => {
+      if (effect.shape === 'circle') {
+        // Para círculos, verificar distancia desde el centro
+        const distance = Math.sqrt(
+          Math.pow(canvasCoords.x - effect.x, 2) + Math.pow(canvasCoords.y - effect.y, 2)
+        );
+        const radiusX = effect.width / 2;
+        const radiusY = effect.height / 2;
+        // Usar el radio mayor para simplificar
+        return distance <= Math.max(radiusX, radiusY);
+      } else {
+        // Para cuadrados, verificar si está dentro del rectángulo
+        return (
+          canvasCoords.x >= effect.x - effect.width / 2 &&
+          canvasCoords.x <= effect.x + effect.width / 2 &&
+          canvasCoords.y >= effect.y - effect.height / 2 &&
+          canvasCoords.y <= effect.y + effect.height / 2
+        );
+      }
+    });
+  };
+
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -227,7 +294,7 @@ export default function MapCanvas({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Pan con botón derecho o espacio + click
+    // Pan con botón derecho o shift + click
     if (e.button === 2 || (e.button === 0 && e.shiftKey)) {
       e.preventDefault();
       setIsPanning(true);
@@ -235,12 +302,36 @@ export default function MapCanvas({
       return;
     }
 
-    const clickedToken = findTokenAtPosition(x, y);
+    const canvasCoords = screenToCanvas(x, y);
 
+    // Si hay un efecto pendiente para agregar, iniciar creación
+    if (pendingEffectType && onAddEffectAtPosition) {
+      setIsCreatingEffect(true);
+      setEffectCreationStart(canvasCoords);
+      setEffectCreationCurrent(canvasCoords); // Inicializar con la misma posición
+      return;
+    }
+
+    // Buscar efecto primero (están encima de los tokens)
+    const clickedEffect = findEffectAtPosition(x, y);
+    if (clickedEffect) {
+      setIsDragging(true);
+      setDragEffectId(clickedEffect.id);
+      setDragOffset({
+        x: canvasCoords.x - clickedEffect.x,
+        y: canvasCoords.y - clickedEffect.y,
+      });
+      if (onEffectClick) {
+        onEffectClick(clickedEffect.id);
+      }
+      return;
+    }
+
+    // Buscar token
+    const clickedToken = findTokenAtPosition(x, y);
     if (clickedToken) {
       setIsDragging(true);
       setDragTokenId(clickedToken.id);
-      const canvasCoords = screenToCanvas(x, y);
       setDragOffset({
         x: canvasCoords.x - clickedToken.x,
         y: canvasCoords.y - clickedToken.y,
@@ -266,22 +357,48 @@ export default function MapCanvas({
         panY: y - panStart.y,
       };
       onZoomChange(newZoom);
+    } else if (isCreatingEffect && pendingEffectType) {
+      const canvasCoords = screenToCanvas(x, y);
+      setEffectCreationCurrent(canvasCoords);
+      // Forzar re-render para mostrar preview
+    } else if (isDragging && dragEffectId) {
+      const canvasCoords = screenToCanvas(x, y);
+      if (onEffectDrag) {
+        onEffectDrag(dragEffectId, canvasCoords.x - dragOffset.x, canvasCoords.y - dragOffset.y);
+      }
     } else if (isDragging && dragTokenId) {
       const canvasCoords = screenToCanvas(x, y);
       if (onTokenDrag) {
         onTokenDrag(dragTokenId, canvasCoords.x - dragOffset.x, canvasCoords.y - dragOffset.y);
       }
     } else {
-      // Actualizar cursor al pasar sobre tokens
+      // Actualizar cursor al pasar sobre efectos y tokens
+      const hoveredEffect = findEffectAtPosition(x, y);
       const hoveredToken = findTokenAtPosition(x, y);
+      setHoveredEffectId(hoveredEffect?.id || null);
       setHoveredTokenId(hoveredToken?.id || null);
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e?: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isCreatingEffect && pendingEffectType && onAddEffectAtPosition) {
+      // Usar las coordenadas actuales guardadas
+      onAddEffectAtPosition(
+        pendingEffectType,
+        effectCreationStart.x,
+        effectCreationStart.y,
+        effectCreationCurrent.x,
+        effectCreationCurrent.y
+      );
+      setIsCreatingEffect(false);
+      setEffectCreationStart({ x: 0, y: 0 });
+      setEffectCreationCurrent({ x: 0, y: 0 });
+    }
+    
     setIsDragging(false);
     setIsPanning(false);
     setDragTokenId(null);
+    setDragEffectId(null);
     setDragOffset({ x: 0, y: 0 });
   };
 
@@ -326,12 +443,12 @@ export default function MapCanvas({
       onMouseLeave={handleMouseUp}
       onWheel={handleWheel}
       onContextMenu={(e) => e.preventDefault()}
-      style={{
-        cursor: isPanning ? 'grabbing' : (isDragging ? 'grabbing' : (hoveredTokenId ? 'grab' : 'default')),
-        display: 'block',
-        maxWidth: '100%',
-        maxHeight: '100%',
-      }}
+          style={{
+            cursor: isPanning ? 'grabbing' : (isDragging ? 'grabbing' : (hoveredTokenId || hoveredEffectId || pendingEffectType ? 'crosshair' : 'default')),
+            display: 'block',
+            maxWidth: '100%',
+            maxHeight: '100%',
+          }}
     />
   );
 }

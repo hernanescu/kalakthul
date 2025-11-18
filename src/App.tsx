@@ -1,13 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useGrid } from './hooks/useGrid';
 import { useTokens } from './hooks/useTokens';
+import { useEffects } from './hooks/useEffects';
 import { loadImageAsBase64 } from './utils/canvasUtils';
-import { snapToGrid } from './utils/gridUtils';
-import { MapState, ImageBounds, ZoomState } from './types';
+import { snapToGrid, pixelToGrid } from './utils/gridUtils';
+import { MapState, ImageBounds, ZoomState, EffectType } from './types';
 import MapCanvas from './components/MapCanvas';
 import GridControls from './components/GridControls';
 import TokenControls from './components/TokenControls';
 import ZoomControls from './components/ZoomControls';
+import EffectControls from './components/EffectControls';
+import EffectRenderer from './components/EffectRenderer';
 import './App.css';
 
 const STORAGE_KEY = 'ttrpg-map-state';
@@ -54,11 +57,25 @@ function App() {
     setTokenSize,
   } = useTokens(initialState?.tokens || []);
 
+  const {
+    effects,
+    selectedEffectId,
+    addEffect,
+    deleteEffect,
+    selectEffect,
+    moveEffect,
+    resizeEffect,
+    setEffectShape,
+    setEffectOpacity,
+  } = useEffects(initialState?.effects || []);
+
   const [mapImage, setMapImage] = useState<string | null>(initialState?.mapImage || null);
   const [imageBounds, setImageBounds] = useState<ImageBounds | null>(initialState?.imageBounds || null);
   const [zoom, setZoom] = useState<ZoomState>(
     initialState?.zoom || { level: 1, panX: 0, panY: 0 }
   );
+  const [pendingEffectType, setPendingEffectType] = useState<EffectType | null>(null);
+  const [defaultEffectShape, setDefaultEffectShape] = useState<'square' | 'circle'>('circle');
 
   console.log('[App] Current state:', {
     hasMapImage: !!mapImage,
@@ -153,6 +170,77 @@ function App() {
     }
   };
 
+  const handleAddEffect = (type: EffectType) => {
+    // En lugar de agregar directamente, activar modo "pendiente"
+    // El efecto se agregará cuando el usuario haga clic en el canvas
+    setPendingEffectType(type);
+  };
+
+  const handleAddEffectAtPosition = (type: string, startX: number, startY: number, endX: number, endY: number) => {
+    // Calcular ancho y alto desde el punto inicial al final
+    const width = Math.abs(endX - startX);
+    const height = Math.abs(endY - startY);
+    
+    // Si el tamaño es muy pequeño, usar tamaño mínimo
+    const finalWidth = Math.max(20, width);
+    const finalHeight = Math.max(20, height);
+    
+    // Centro del efecto (usar el centro exacto del área arrastrada)
+    const centerX = (startX + endX) / 2;
+    const centerY = (startY + endY) / 2;
+    
+    // Para efectos, no hacer snap automático - usar la posición exacta
+    // Solo calcular gridX/gridY para referencia, pero usar las coordenadas exactas
+    const gridPos = pixelToGrid(centerX, centerY, imageBounds, grid);
+    const gridX = gridPos?.gridX ?? 0;
+    const gridY = gridPos?.gridY ?? 0;
+    
+    addEffect(
+      type as EffectType,
+      centerX,
+      centerY,
+      finalWidth,
+      finalHeight,
+      defaultEffectShape,
+      gridX,
+      gridY
+    );
+    
+    setPendingEffectType(null); // Desactivar modo pendiente
+  };
+
+  const handleEffectClick = (effectId: string) => {
+    selectEffect(effectId);
+  };
+
+  const handleEffectDrag = (effectId: string, x: number, y: number) => {
+    const snapped = snapToGrid(x, y, imageBounds, grid);
+    if (snapped) {
+      moveEffect(effectId, snapped.x, snapped.y, snapped.gridX, snapped.gridY);
+    }
+  };
+
+  const handleDeleteEffect = () => {
+    if (selectedEffectId) {
+      deleteEffect(selectedEffectId);
+    }
+  };
+
+  const handleEffectShapeChange = (shape: 'square' | 'circle') => {
+    if (selectedEffectId) {
+      setEffectShape(selectedEffectId, shape);
+    } else {
+      // Si no hay efecto seleccionado, guardar la forma para el próximo efecto
+      setDefaultEffectShape(shape);
+    }
+  };
+
+  const handleEffectOpacityChange = (opacity: number) => {
+    if (selectedEffectId) {
+      setEffectOpacity(selectedEffectId, opacity);
+    }
+  };
+
   const handleDeleteToken = () => {
     if (selectedTokenId) {
       deleteToken(selectedTokenId);
@@ -220,6 +308,8 @@ function App() {
       grid,
       tokens,
       selectedTokenId,
+      effects,
+      selectedEffectId,
       zoom,
     };
     try {
@@ -227,7 +317,7 @@ function App() {
     } catch (error) {
       console.error('Error saving to localStorage:', error);
     }
-  }, [mapImage, imageBounds, grid, tokens, selectedTokenId, zoom, isInitialized]);
+  }, [mapImage, imageBounds, grid, tokens, selectedTokenId, effects, selectedEffectId, zoom, isInitialized]);
 
   const selectedToken = tokens.find((t) => t.id === selectedTokenId) || null;
 
@@ -306,6 +396,16 @@ function App() {
             onZoomOut={handleZoomOut}
             onZoomReset={handleZoomReset}
           />
+
+          <EffectControls
+            selectedEffectType={effects.find(e => e.id === selectedEffectId)?.type || null}
+            selectedShape={effects.find(e => e.id === selectedEffectId)?.shape || defaultEffectShape}
+            onAddEffect={handleAddEffect}
+            onDeleteEffect={handleDeleteEffect}
+            onShapeChange={handleEffectShapeChange}
+            onOpacityChange={handleEffectOpacityChange}
+            selectedOpacity={effects.find(e => e.id === selectedEffectId)?.opacity}
+          />
         </div>
       )}
 
@@ -316,13 +416,32 @@ function App() {
           grid={grid}
           tokens={tokens}
           selectedTokenId={selectedTokenId}
+          effects={effects}
+          selectedEffectId={selectedEffectId}
+          pendingEffectType={pendingEffectType}
           zoom={zoom}
           onTokenClick={handleTokenClick}
           onTokenDrag={handleTokenDrag}
+          onEffectClick={handleEffectClick}
+          onEffectDrag={handleEffectDrag}
+          onAddEffectAtPosition={handleAddEffectAtPosition}
           onImageBoundsChange={handleImageBoundsChange}
           onZoomChange={handleZoomChange}
           canvasDimensions={canvasDimensions}
         />
+        {/* Renderizar efectos sobre el canvas */}
+        <div className="effects-layer">
+          {effects.map((effect) => (
+            <EffectRenderer
+              key={effect.id}
+              effect={effect}
+              imageBounds={imageBounds}
+              canvasWidth={canvasDimensions.width}
+              canvasHeight={canvasDimensions.height}
+              zoom={zoom}
+            />
+          ))}
+        </div>
         {isPresentationMode && (
           <>
             <ZoomControls

@@ -28,6 +28,8 @@ export interface MapState {
   grid: GridConfig;
   tokens: Token[];
   selectedTokenId: string | null;
+  effects: Effect[]; // Efectos animados en el mapa
+  selectedEffectId: string | null;
   zoom?: ZoomState; // Estado de zoom (opcional para compatibilidad)
 }
 
@@ -45,5 +47,23 @@ export interface ImageBounds {
   height: number; // Alto de la imagen renderizada
   originalWidth: number; // Ancho original de la imagen
   originalHeight: number; // Alto original de la imagen
+}
+
+export type EffectType = 'fire' | 'ice' | 'poison' | 'lightning' | 'magic' | 'wind' | 'water' | 'darkness';
+
+export type EffectShape = 'square' | 'circle';
+
+export interface Effect {
+  id: string;
+  type: EffectType;
+  x: number; // Posición X en píxeles del canvas (centro)
+  y: number; // Posición Y en píxeles del canvas (centro)
+  gridX: number; // Posición X en celdas de la grilla
+  gridY: number; // Posición Y en celdas de la grilla
+  width: number; // Ancho del efecto en píxeles
+  height: number; // Alto del efecto en píxeles
+  shape: EffectShape; // Forma del efecto (cuadrado o redondo)
+  opacity: number; // Opacidad del efecto (0-1)
+  animationUrl?: string; // URL para animación Lottie o GIF
 }
 
