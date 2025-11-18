@@ -78,12 +78,6 @@ function App() {
   const [pendingEffectType, setPendingEffectType] = useState<EffectType | null>(null);
   const [defaultEffectShape, setDefaultEffectShape] = useState<'square' | 'circle'>('circle');
 
-  console.log('[App] Current state:', {
-    hasMapImage: !!mapImage,
-    hasImageBounds: !!imageBounds,
-    zoom: zoom,
-    isInitialized: isInitialized
-  });
 
   // Sincronizar mapImage, imageBounds y zoom cuando se carga el estado inicial
   useEffect(() => {

@@ -95,13 +95,6 @@ export default function MapCanvas({
       return;
     }
 
-    console.log('[MapCanvas] Rendering with:', {
-      hasMapImage: !!mapImage,
-      hasImageBounds: !!imageBounds,
-      zoom: zoom,
-      canvasSize: { width: canvas.width, height: canvas.height },
-      tokensCount: tokens.length
-    });
 
     const render = () => {
       // Limpiar canvas
@@ -114,7 +107,6 @@ export default function MapCanvas({
         panY: zoom?.panY || 0,
       };
 
-      console.log('[MapCanvas] Applying zoom/pan:', safeZoom);
 
       ctx.save();
       ctx.translate(safeZoom.panX, safeZoom.panY);
@@ -125,13 +117,6 @@ export default function MapCanvas({
       // Dibujar imagen de mapa
       if (mapImage && imageRef.current && imageRef.current.complete) {
         const img = imageRef.current;
-        console.log('[MapCanvas] Drawing image:', { 
-          imgWidth: img.width, 
-          imgHeight: img.height,
-          canvasWidth: canvas.width,
-          canvasHeight: canvas.height,
-          zoom: zoom.level
-        });
         const imgAspect = img.width / img.height;
         const canvasAspect = canvas.width / canvas.height;
         
@@ -176,7 +161,6 @@ export default function MapCanvas({
         }
       } else if (!mapImage) {
         // Fondo gris si no hay mapa
-        console.log('[MapCanvas] No map image, drawing gray background');
         ctx.fillStyle = '#2a2a2a';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         if (imageCacheRef.current.src !== null) {
@@ -189,19 +173,16 @@ export default function MapCanvas({
 
       // Usar bounds actuales o cacheados
       const boundsToUse = currentImageBounds || imageBounds || imageCacheRef.current.bounds;
-      console.log('[MapCanvas] Using bounds:', boundsToUse);
 
       // Dibujar grilla
       if (grid.visible && boundsToUse) {
         const dimensions = calculateGridDimensions(canvas.width, canvas.height, grid, boundsToUse);
-        console.log('[MapCanvas] Drawing grid with dimensions:', dimensions);
         drawGrid(ctx, grid, dimensions, boundsToUse);
       }
 
       // Dibujar tokens
       if (boundsToUse) {
         const dimensions = calculateGridDimensions(canvas.width, canvas.height, grid, boundsToUse);
-        console.log('[MapCanvas] Drawing tokens:', tokens.length);
         drawTokens(ctx, tokens, selectedTokenId, dimensions, grid);
       } else {
         console.warn('[MapCanvas] No bounds available, skipping grid and tokens');
@@ -231,7 +212,6 @@ export default function MapCanvas({
         ctx.restore();
       }
 
-      console.log('[MapCanvas] Render complete');
     };
 
     render();
