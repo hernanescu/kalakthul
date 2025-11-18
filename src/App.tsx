@@ -143,7 +143,7 @@ function App() {
     }
   };
 
-  const handleTokenClick = (tokenId: string) => {
+  const handleTokenClick = (tokenId: string | null) => {
     selectToken(tokenId);
   };
 
@@ -209,15 +209,18 @@ function App() {
     setPendingEffectType(null); // Desactivar modo pendiente
   };
 
-  const handleEffectClick = (effectId: string) => {
+  const handleEffectClick = (effectId: string | null) => {
     selectEffect(effectId);
   };
 
   const handleEffectDrag = (effectId: string, x: number, y: number) => {
-    const snapped = snapToGrid(x, y, imageBounds, grid);
-    if (snapped) {
-      moveEffect(effectId, snapped.x, snapped.y, snapped.gridX, snapped.gridY);
-    }
+    // Para efectos, no hacer snap automático - usar posición exacta
+    // Solo calcular gridX/gridY para referencia
+    const gridPos = pixelToGrid(x, y, imageBounds, grid);
+    const gridX = gridPos?.gridX ?? 0;
+    const gridY = gridPos?.gridY ?? 0;
+    
+    moveEffect(effectId, x, y, gridX, gridY);
   };
 
   const handleDeleteEffect = () => {

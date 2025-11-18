@@ -49,7 +49,7 @@ export default function EffectControls({
         ))}
       </div>
 
-      {selectedEffectType && (
+      {selectedEffectType ? (
         <>
           <div className="control-group">
             <label>
@@ -93,10 +93,8 @@ export default function EffectControls({
             </button>
           </div>
         </>
-      )}
-
-      {!selectedEffectType && (
-        <p className="hint">Selecciona un tipo de efecto, luego haz clic y arrastra en el mapa para crear el efecto con el tamaño deseado</p>
+      ) : (
+        <p className="hint">Selecciona un efecto en el mapa para editarlo, o elige un tipo de efecto y arrastra en el mapa para crear uno nuevo</p>
       )}
     </div>
   );

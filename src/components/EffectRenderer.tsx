@@ -450,7 +450,7 @@ export default function EffectRenderer({
         width: `${scaledWidth}px`,
         height: `${scaledHeight}px`,
         opacity: effect.opacity,
-        pointerEvents: 'auto', // Permitir interacción con efectos
+        pointerEvents: 'none', // Los clics se manejan desde el canvas
         transform: 'translate(-50%, -50%)',
         borderRadius: borderRadius,
         overflow: 'hidden',

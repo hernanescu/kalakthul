@@ -2,6 +2,34 @@ import { useRef, useEffect, useState } from 'react';
 import { GridConfig, Token, ImageBounds, ZoomState, Effect } from '../types';
 import { calculateGridDimensions, drawGrid, drawTokens } from '../utils/canvasRender';
 
+// Función para persistir logs
+const persistLog = (message: string, data?: any) => {
+  const logs = JSON.parse(localStorage.getItem('debug_logs') || '[]');
+  logs.push({ timestamp: Date.now(), message, data });
+  // Mantener solo los últimos 50 logs
+  if (logs.length > 50) logs.shift();
+  localStorage.setItem('debug_logs', JSON.stringify(logs));
+  console.log(message, data);
+};
+
+// Función para mostrar logs guardados
+const showPersistedLogs = () => {
+  const logs = JSON.parse(localStorage.getItem('debug_logs') || '[]');
+  console.log('=== LOGS PERSISTIDOS ===');
+  logs.forEach((log: any, index: number) => {
+    const date = new Date(log.timestamp).toLocaleTimeString();
+    console.log(`${index + 1}. [${date}] ${log.message}`, log.data);
+  });
+  console.log('=== FIN LOGS ===');
+};
+
+// Exponer función global para debugging
+(window as any).showDebugLogs = showPersistedLogs;
+(window as any).clearDebugLogs = () => {
+  localStorage.removeItem('debug_logs');
+  console.log('Logs de debug limpiados');
+};
+
 interface MapCanvasProps {
   mapImage: string | null;
   imageBounds: ImageBounds | null;
@@ -12,9 +40,9 @@ interface MapCanvasProps {
   selectedEffectId: string | null;
   pendingEffectType: string | null; // Tipo de efecto que se va a agregar
   zoom: ZoomState;
-  onTokenClick?: (tokenId: string) => void;
+  onTokenClick?: (tokenId: string | null) => void;
   onTokenDrag?: (tokenId: string, x: number, y: number) => void;
-  onEffectClick?: (effectId: string) => void;
+  onEffectClick?: (effectId: string | null) => void;
   onEffectDrag?: (effectId: string, x: number, y: number) => void;
   onAddEffectAtPosition?: (type: string, startX: number, startY: number, endX: number, endY: number) => void;
   onImageBoundsChange?: (bounds: ImageBounds | null) => void;
@@ -263,8 +291,15 @@ export default function MapCanvas({
     const canvas = canvasRef.current;
     if (!canvas) return null;
 
-    const canvasCoords = screenToCanvas(x, y);
-    return effects.find((effect) => {
+    // Convertir coordenadas del clic (que están en sistema renderizado con zoom/pan)
+    // de vuelta al sistema de coordenadas absolutas del canvas
+    const canvasCoords = {
+      x: (x - zoom.panX) / zoom.level,
+      y: (y - zoom.panY) / zoom.level,
+    };
+    persistLog('Coordenadas de clic:', {screenX: x, screenY: y, canvasCoords, effectsCount: effects.length, effects: effects.map(e => ({id: e.id, x: e.x, y: e.y, width: e.width, height: e.height}))});
+    const found = effects.find((effect) => {
+      let isInside = false;
       if (effect.shape === 'circle') {
         // Para círculos, verificar distancia desde el centro
         const distance = Math.sqrt(
@@ -273,17 +308,19 @@ export default function MapCanvas({
         const radiusX = effect.width / 2;
         const radiusY = effect.height / 2;
         // Usar el radio mayor para simplificar
-        return distance <= Math.max(radiusX, radiusY);
+        isInside = distance <= Math.max(radiusX, radiusY);
       } else {
         // Para cuadrados, verificar si está dentro del rectángulo
-        return (
+        isInside = (
           canvasCoords.x >= effect.x - effect.width / 2 &&
           canvasCoords.x <= effect.x + effect.width / 2 &&
           canvasCoords.y >= effect.y - effect.height / 2 &&
           canvasCoords.y <= effect.y + effect.height / 2
         );
       }
+      return isInside;
     });
+    return found;
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -304,17 +341,38 @@ export default function MapCanvas({
 
     const canvasCoords = screenToCanvas(x, y);
 
-    // Si hay un efecto pendiente para agregar, iniciar creación
-    if (pendingEffectType && onAddEffectAtPosition) {
-      setIsCreatingEffect(true);
-      setEffectCreationStart(canvasCoords);
-      setEffectCreationCurrent(canvasCoords); // Inicializar con la misma posición
-      return;
-    }
-
     // Buscar efecto primero (están encima de los tokens)
     const clickedEffect = findEffectAtPosition(x, y);
+    persistLog('Buscando efecto en canvas, encontrado:', clickedEffect ? clickedEffect.id : 'ninguno');
+    
+    // Si hay un efecto pendiente para agregar
+    if (pendingEffectType && onAddEffectAtPosition) {
+      if (clickedEffect) {
+        // Si se hace clic en un efecto existente, cancelar creación y seleccionarlo
+        if (onEffectClick) {
+          onEffectClick(clickedEffect.id);
+        }
+        setPendingEffectType(null);
+        // Continuar con la lógica normal de arrastre
+        setIsDragging(true);
+        setDragEffectId(clickedEffect.id);
+        setDragOffset({
+          x: canvasCoords.x - clickedEffect.x,
+          y: canvasCoords.y - clickedEffect.y,
+        });
+        return;
+      } else {
+        // Si no hay efecto, iniciar creación
+        setIsCreatingEffect(true);
+        setEffectCreationStart(canvasCoords);
+        setEffectCreationCurrent(canvasCoords);
+        return;
+      }
+    }
+    
+    // Si se hace clic en un efecto (sin modo pendiente)
     if (clickedEffect) {
+      persistLog('¡Efecto clicado!', clickedEffect.id);
       setIsDragging(true);
       setDragEffectId(clickedEffect.id);
       setDragOffset({
@@ -340,6 +398,8 @@ export default function MapCanvas({
         onTokenClick(clickedToken.id);
       }
     }
+    // Nota: No deseleccionar automáticamente al hacer clic en el canvas vacío
+    // para permitir mantener la selección mientras se trabaja
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
