@@ -1,13 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useGrid } from './hooks/useGrid';
-import { useTokens } from './hooks/useTokens';
 import { useEffects } from './hooks/useEffects';
 import { loadImageAsBase64 } from './utils/canvasUtils';
 import { snapToGrid, pixelToGrid } from './utils/gridUtils';
 import { MapState, ImageBounds, ZoomState, EffectType } from './types';
 import MapCanvas from './components/MapCanvas';
 import GridControls from './components/GridControls';
-import TokenControls from './components/TokenControls';
 import ZoomControls from './components/ZoomControls';
 import EffectControls from './components/EffectControls';
 import CollapsibleSection from './components/CollapsibleSection';
@@ -47,16 +45,6 @@ function App() {
   }, []);
 
   const { grid, setRows, setColumns, setOpacity, setColor, toggleVisibility } = useGrid(initialState?.grid);
-  const {
-    tokens,
-    selectedTokenId,
-    addToken,
-    deleteToken,
-    selectToken,
-    moveToken,
-    setTokenColor,
-    setTokenSize,
-  } = useTokens(initialState?.tokens || []);
 
   const {
     effects,
@@ -138,32 +126,6 @@ function App() {
     }
   };
 
-  const handleTokenClick = (tokenId: string | null) => {
-    selectToken(tokenId);
-  };
-
-  const handleTokenDrag = (tokenId: string, x: number, y: number) => {
-    const snapped = snapToGrid(x, y, imageBounds, grid);
-    if (snapped) {
-      moveToken(tokenId, snapped.x, snapped.y, snapped.gridX, snapped.gridY);
-    }
-  };
-
-  const handleAddToken = () => {
-    // Si hay imagen, añadir token en el centro de la imagen; si no, en el centro del canvas
-    let centerX = canvasDimensions.width / 2;
-    let centerY = canvasDimensions.height / 2;
-    
-    if (imageBounds) {
-      centerX = imageBounds.x + imageBounds.width / 2;
-      centerY = imageBounds.y + imageBounds.height / 2;
-    }
-    
-    const snapped = snapToGrid(centerX, centerY, imageBounds, grid);
-    if (snapped) {
-      addToken(snapped.x, snapped.y, snapped.gridX, snapped.gridY);
-    }
-  };
 
   const handleAddEffect = (type: EffectType) => {
     // En lugar de agregar directamente, activar modo "pendiente"
@@ -239,23 +201,6 @@ function App() {
     }
   };
 
-  const handleDeleteToken = () => {
-    if (selectedTokenId) {
-      deleteToken(selectedTokenId);
-    }
-  };
-
-  const handleColorChange = (color: string) => {
-    if (selectedTokenId) {
-      setTokenColor(selectedTokenId, color);
-    }
-  };
-
-  const handleSizeChange = (size: number) => {
-    if (selectedTokenId) {
-      setTokenSize(selectedTokenId, size);
-    }
-  };
 
   const togglePresentationMode = async () => {
     if (!isPresentationMode) {
@@ -304,8 +249,6 @@ function App() {
       mapImage,
       imageBounds,
       grid,
-      tokens,
-      selectedTokenId,
       effects,
       selectedEffectId,
       zoom,
@@ -315,9 +258,8 @@ function App() {
     } catch (error) {
       console.error('Error saving to localStorage:', error);
     }
-  }, [mapImage, imageBounds, grid, tokens, selectedTokenId, effects, selectedEffectId, zoom, isInitialized]);
+  }, [mapImage, imageBounds, grid, effects, selectedEffectId, zoom, isInitialized]);
 
-  const selectedToken = tokens.find((t) => t.id === selectedTokenId) || null;
 
   // Memoizar los callbacks para evitar re-renders innecesarios
   const handleImageBoundsChange = useCallback((bounds: ImageBounds | null) => {
@@ -394,15 +336,6 @@ function App() {
                 />
               </CollapsibleSection>
 
-              <CollapsibleSection title="Tokens" defaultExpanded={false}>
-                <TokenControls
-                  selectedToken={selectedToken}
-                  onColorChange={handleColorChange}
-                  onSizeChange={handleSizeChange}
-                  onDelete={handleDeleteToken}
-                  onAddToken={handleAddToken}
-                />
-              </CollapsibleSection>
 
               <CollapsibleSection title="Zoom" defaultExpanded={false}>
                 <ZoomControls
@@ -416,25 +349,21 @@ function App() {
       )}
 
       <div className="canvas-container">
-        <MapCanvas
-          mapImage={mapImage}
-          imageBounds={imageBounds}
-          grid={grid}
-          tokens={tokens}
-          selectedTokenId={selectedTokenId}
-          effects={effects}
-          selectedEffectId={selectedEffectId}
-          pendingEffectType={pendingEffectType}
-          zoom={zoom}
-          onTokenClick={handleTokenClick}
-          onTokenDrag={handleTokenDrag}
-          onEffectClick={handleEffectClick}
-          onEffectDrag={handleEffectDrag}
-          onAddEffectAtPosition={handleAddEffectAtPosition}
-          onImageBoundsChange={handleImageBoundsChange}
-          onZoomChange={handleZoomChange}
-          canvasDimensions={canvasDimensions}
-        />
+            <MapCanvas
+              mapImage={mapImage}
+              imageBounds={imageBounds}
+              grid={grid}
+              effects={effects}
+              selectedEffectId={selectedEffectId}
+              pendingEffectType={pendingEffectType}
+              zoom={zoom}
+              onEffectClick={handleEffectClick}
+              onEffectDrag={handleEffectDrag}
+              onAddEffectAtPosition={handleAddEffectAtPosition}
+              onImageBoundsChange={handleImageBoundsChange}
+              onZoomChange={handleZoomChange}
+              canvasDimensions={canvasDimensions}
+            />
         {/* Renderizar efectos sobre el canvas */}
         <div className="effects-layer">
           {effects.map((effect) => (

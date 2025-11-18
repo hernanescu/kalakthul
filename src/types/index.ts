@@ -1,13 +1,3 @@
-export interface Token {
-  id: string;
-  x: number; // Posición X en píxeles del canvas
-  y: number; // Posición Y en píxeles del canvas
-  color: string; // Color hexadecimal del token
-  size: number; // Tamaño en celdas (1, 2, o 3)
-  gridX: number; // Posición X en celdas de la grilla
-  gridY: number; // Posición Y en celdas de la grilla
-}
-
 export interface GridConfig {
   rows: number;
   columns: number;
@@ -26,8 +16,6 @@ export interface MapState {
   mapImage: string | null; // URL o base64 de la imagen
   imageBounds: ImageBounds | null; // Dimensiones y posición de la imagen renderizada
   grid: GridConfig;
-  tokens: Token[];
-  selectedTokenId: string | null;
   effects: Effect[]; // Efectos animados en el mapa
   selectedEffectId: string | null;
   zoom?: ZoomState; // Estado de zoom (opcional para compatibilidad)

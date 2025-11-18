@@ -1,20 +1,16 @@
 import { useRef, useEffect, useState } from 'react';
-import { GridConfig, Token, ImageBounds, ZoomState, Effect } from '../types';
-import { calculateGridDimensions, drawGrid, drawTokens } from '../utils/canvasRender';
+import { GridConfig, ImageBounds, ZoomState, Effect } from '../types';
+import { calculateGridDimensions, drawGrid } from '../utils/canvasRender';
 
 
 interface MapCanvasProps {
   mapImage: string | null;
   imageBounds: ImageBounds | null;
   grid: GridConfig;
-  tokens: Token[];
-  selectedTokenId: string | null;
   effects: Effect[];
   selectedEffectId: string | null;
   pendingEffectType: string | null; // Tipo de efecto que se va a agregar
   zoom: ZoomState;
-  onTokenClick?: (tokenId: string | null) => void;
-  onTokenDrag?: (tokenId: string, x: number, y: number) => void;
   onEffectClick?: (effectId: string | null) => void;
   onEffectDrag?: (effectId: string, x: number, y: number) => void;
   onAddEffectAtPosition?: (type: string, startX: number, startY: number, endX: number, endY: number) => void;
@@ -27,14 +23,10 @@ export default function MapCanvas({
   mapImage,
   imageBounds,
   grid,
-  tokens,
-  selectedTokenId,
   effects,
   selectedEffectId,
   pendingEffectType,
   zoom,
-  onTokenClick,
-  onTokenDrag,
   onEffectClick,
   onEffectDrag,
   onAddEffectAtPosition,
@@ -45,10 +37,8 @@ export default function MapCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCacheRef = useRef<{ src: string | null; bounds: ImageBounds | null }>({ src: null, bounds: null });
   const [isDragging, setIsDragging] = useState(false);
-  const [dragTokenId, setDragTokenId] = useState<string | null>(null);
   const [dragEffectId, setDragEffectId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [hoveredTokenId, setHoveredTokenId] = useState<string | null>(null);
   const [hoveredEffectId, setHoveredEffectId] = useState<string | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -180,13 +170,7 @@ export default function MapCanvas({
         drawGrid(ctx, grid, dimensions, boundsToUse);
       }
 
-      // Dibujar tokens
-      if (boundsToUse) {
-        const dimensions = calculateGridDimensions(canvas.width, canvas.height, grid, boundsToUse);
-        drawTokens(ctx, tokens, selectedTokenId, dimensions, grid);
-      } else {
-        console.warn('[MapCanvas] No bounds available, skipping grid and tokens');
-      }
+          // No hay tokens que dibujar
 
       ctx.restore();
 
@@ -215,7 +199,7 @@ export default function MapCanvas({
     };
 
     render();
-  }, [mapImage, imageLoaded, imageBounds, grid, tokens, selectedTokenId, canvasDimensions, zoom, onImageBoundsChange, isCreatingEffect, effectCreationStart, effectCreationCurrent, pendingEffectType]);
+  }, [mapImage, imageLoaded, imageBounds, grid, canvasDimensions, zoom, onImageBoundsChange, isCreatingEffect, effectCreationStart, effectCreationCurrent, pendingEffectType]);
 
   // Convertir coordenadas del mouse a coordenadas del canvas con zoom
   const screenToCanvas = (screenX: number, screenY: number) => {
@@ -225,20 +209,6 @@ export default function MapCanvas({
     };
   };
 
-  const findTokenAtPosition = (x: number, y: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-
-    const canvasCoords = screenToCanvas(x, y);
-    const dimensions = calculateGridDimensions(canvas.width, canvas.height, grid, imageBounds);
-    return tokens.find((token) => {
-      const tokenRadius = (dimensions.cellWidth * token.size) / 2;
-      const distance = Math.sqrt(
-        Math.pow(canvasCoords.x - token.x, 2) + Math.pow(canvasCoords.y - token.y, 2)
-      );
-      return distance <= tokenRadius;
-    });
-  };
 
   const findEffectAtPosition = (x: number, y: number) => {
     const canvas = canvasRef.current;
@@ -293,63 +263,50 @@ export default function MapCanvas({
 
     const canvasCoords = screenToCanvas(x, y);
 
-    // Buscar efecto primero (están encima de los tokens)
-    const clickedEffect = findEffectAtPosition(x, y);
-    
-    // Si hay un efecto pendiente para agregar
-    if (pendingEffectType && onAddEffectAtPosition) {
-      if (clickedEffect) {
-        // Si se hace clic en un efecto existente, cancelar creación y seleccionarlo
-        if (onEffectClick) {
-          onEffectClick(clickedEffect.id);
-        }
-        setPendingEffectType(null);
-        // Continuar con la lógica normal de arrastre
-        setIsDragging(true);
-        setDragEffectId(clickedEffect.id);
-        setDragOffset({
-          x: canvasCoords.x - clickedEffect.x,
-          y: canvasCoords.y - clickedEffect.y,
-        });
-        return;
-      } else {
-        // Si no hay efecto, iniciar creación
-        setIsCreatingEffect(true);
-        setEffectCreationStart(canvasCoords);
-        setEffectCreationCurrent(canvasCoords);
-        return;
-      }
-    }
-    
-    // Si se hace clic en un efecto (sin modo pendiente)
-    if (clickedEffect) {
-      setIsDragging(true);
-      setDragEffectId(clickedEffect.id);
-      setDragOffset({
-        x: canvasCoords.x - clickedEffect.x,
-        y: canvasCoords.y - clickedEffect.y,
-      });
-      if (onEffectClick) {
-        onEffectClick(clickedEffect.id);
-      }
-      return;
-    }
+        // Buscar efecto primero
+        const clickedEffect = findEffectAtPosition(x, y);
 
-    // Buscar token
-    const clickedToken = findTokenAtPosition(x, y);
-    if (clickedToken) {
-      setIsDragging(true);
-      setDragTokenId(clickedToken.id);
-      setDragOffset({
-        x: canvasCoords.x - clickedToken.x,
-        y: canvasCoords.y - clickedToken.y,
-      });
-      if (onTokenClick) {
-        onTokenClick(clickedToken.id);
-      }
-    }
-    // Nota: No deseleccionar automáticamente al hacer clic en el canvas vacío
-    // para permitir mantener la selección mientras se trabaja
+        // Si hay un efecto pendiente para agregar
+        if (pendingEffectType && onAddEffectAtPosition) {
+          if (clickedEffect) {
+            // Si se hace clic en un efecto existente, cancelar creación y seleccionarlo
+            if (onEffectClick) {
+              onEffectClick(clickedEffect.id);
+            }
+            setPendingEffectType(null);
+            // Continuar con la lógica normal de arrastre
+            setIsDragging(true);
+            setDragEffectId(clickedEffect.id);
+            setDragOffset({
+              x: canvasCoords.x - clickedEffect.x,
+              y: canvasCoords.y - clickedEffect.y,
+            });
+            return;
+          } else {
+            // Si no hay efecto, iniciar creación
+            setIsCreatingEffect(true);
+            setEffectCreationStart(canvasCoords);
+            setEffectCreationCurrent(canvasCoords);
+            return;
+          }
+        }
+
+        // Si se hace clic en un efecto (sin modo pendiente)
+        if (clickedEffect) {
+          setIsDragging(true);
+          setDragEffectId(clickedEffect.id);
+          setDragOffset({
+            x: canvasCoords.x - clickedEffect.x,
+            y: canvasCoords.y - clickedEffect.y,
+          });
+          if (onEffectClick) {
+            onEffectClick(clickedEffect.id);
+          }
+          return;
+        }
+
+        // Nota: No deseleccionar automáticamente al hacer clic en el canvas vacío
+        // para permitir mantener la selección mientras se trabaja
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -376,18 +333,11 @@ export default function MapCanvas({
       if (onEffectDrag) {
         onEffectDrag(dragEffectId, canvasCoords.x - dragOffset.x, canvasCoords.y - dragOffset.y);
       }
-    } else if (isDragging && dragTokenId) {
-      const canvasCoords = screenToCanvas(x, y);
-      if (onTokenDrag) {
-        onTokenDrag(dragTokenId, canvasCoords.x - dragOffset.x, canvasCoords.y - dragOffset.y);
-      }
-    } else {
-      // Actualizar cursor al pasar sobre efectos y tokens
-      const hoveredEffect = findEffectAtPosition(x, y);
-      const hoveredToken = findTokenAtPosition(x, y);
-      setHoveredEffectId(hoveredEffect?.id || null);
-      setHoveredTokenId(hoveredToken?.id || null);
-    }
+        } else {
+          // Actualizar cursor al pasar sobre efectos
+          const hoveredEffect = findEffectAtPosition(x, y);
+          setHoveredEffectId(hoveredEffect?.id || null);
+        }
   };
 
   const handleMouseUp = (e?: React.MouseEvent<HTMLCanvasElement>) => {
@@ -405,11 +355,10 @@ export default function MapCanvas({
       setEffectCreationCurrent({ x: 0, y: 0 });
     }
     
-    setIsDragging(false);
-    setIsPanning(false);
-    setDragTokenId(null);
-    setDragEffectId(null);
-    setDragOffset({ x: 0, y: 0 });
+        setIsDragging(false);
+        setIsPanning(false);
+        setDragEffectId(null);
+        setDragOffset({ x: 0, y: 0 });
   };
 
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
@@ -454,7 +403,7 @@ export default function MapCanvas({
       onWheel={handleWheel}
       onContextMenu={(e) => e.preventDefault()}
           style={{
-            cursor: isPanning ? 'grabbing' : (isDragging ? 'grabbing' : (hoveredTokenId || hoveredEffectId || pendingEffectType ? 'crosshair' : 'default')),
+            cursor: isPanning ? 'grabbing' : (isDragging ? 'grabbing' : (hoveredEffectId || pendingEffectType ? 'crosshair' : 'default')),
             display: 'block',
             maxWidth: '100%',
             maxHeight: '100%',

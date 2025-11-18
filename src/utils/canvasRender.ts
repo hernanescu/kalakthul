@@ -1,4 +1,4 @@
-import { GridConfig, Token, CanvasDimensions, ImageBounds } from '../types';
+import { GridConfig, CanvasDimensions, ImageBounds } from '../types';
 import { calculateGridDimensions } from './gridUtils';
 
 export { calculateGridDimensions };
@@ -64,40 +64,5 @@ function drawGridOnArea(
   }
 
   ctx.restore();
-}
-
-export function drawTokens(
-  ctx: CanvasRenderingContext2D,
-  tokens: Token[],
-  selectedTokenId: string | null,
-  dimensions: CanvasDimensions,
-  _grid: GridConfig
-): void {
-  tokens.forEach((token) => {
-    const radius = (dimensions.cellWidth * token.size) / 2;
-    const isSelected = token.id === selectedTokenId;
-
-    // Círculo del token
-    ctx.beginPath();
-    ctx.arc(token.x, token.y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = token.color;
-    ctx.fill();
-
-    // Borde del token
-    ctx.strokeStyle = isSelected ? '#ffffff' : '#000000';
-    ctx.lineWidth = isSelected ? 3 : 2;
-    ctx.stroke();
-
-    // Indicador de selección adicional
-    if (isSelected) {
-      ctx.beginPath();
-      ctx.arc(token.x, token.y, radius + 5, 0, Math.PI * 2);
-      ctx.strokeStyle = '#ffff00';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 5]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-  });
 }
 
