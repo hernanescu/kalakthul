@@ -222,6 +222,23 @@ Para información detallada sobre el proceso de desarrollo, problemas encontrado
 
 📖 **[Sesión de Desarrollo Completa](docs/SESION_DESARROLLO_KALAKTHUL.md)**
 
+## 📄 FinOps así nomás
+
+Datos extraídos del consumo de Cursor, analizados por Gemini.
+
+(Período: Posterior a 18-11-2025 17:10 GMT-3)
+
+| Columna | Suma |
+|:---|:---|
+| Costos (USD) | $3.88 |
+| Tokens Totales | 34,064,710 |
+| Tokens de Entrada (con Cache Write) | 268 |
+| Tokens de Entrada (sin Cache Write) | 1,496,558 |
+| Tokens de Lectura de Caché | 32,485,679 |
+| Tokens de Salida | 82,205 |
+| Eventos Contabilizados | 104 |
+
+
 ---
 
 **Dedicado a Anthalion, Baldewyne, Shakka, Solare y Skady** 🏰⚔️
