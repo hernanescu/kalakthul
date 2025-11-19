@@ -255,6 +255,7 @@ export default function MapCanvas({
   }, [mapImage, imageLoaded, imageBounds, grid, canvasDimensions, zoom, onImageBoundsChange, isCreatingEffect, effectCreationStart, effectCreationCurrent, pendingEffectType]);
 
   // Convertir coordenadas del mouse a coordenadas del canvas con zoom
+  // Coordenadas absolutas del canvas considerando zoom y pan
   const screenToCanvas = (screenX: number, screenY: number) => {
     return {
       x: (screenX - zoom.panX) / zoom.level,
@@ -267,8 +268,7 @@ export default function MapCanvas({
     const canvas = canvasRef.current;
     if (!canvas) return null;
 
-    // Convertir coordenadas del clic (que están en sistema renderizado con zoom/pan)
-    // de vuelta al sistema de coordenadas absolutas del canvas
+    // Coordenadas absolutas del canvas considerando zoom y pan
     const canvasCoords = {
       x: (x - zoom.panX) / zoom.level,
       y: (y - zoom.panY) / zoom.level,

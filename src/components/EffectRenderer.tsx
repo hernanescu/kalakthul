@@ -9,6 +9,7 @@ interface EffectRendererProps {
   canvasWidth: number;
   canvasHeight: number;
   zoom: { level: number; panX: number; panY: number };
+  isPresentationMode: boolean;
 }
 
 // Configuración de efectos - Elige el tipo de animación que quieres usar
@@ -448,6 +449,7 @@ export default function EffectRenderer({
   canvasWidth,
   canvasHeight,
   zoom,
+  isPresentationMode,
 }: EffectRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<any>(null);
@@ -460,9 +462,10 @@ export default function EffectRenderer({
     const scaledWidth = effect.width * zoom.level;
     const scaledHeight = effect.height * zoom.level;
     
-    // Convertir coordenadas del canvas a coordenadas de pantalla
+    // Las coordenadas de los efectos son absolutas del canvas considerando zoom y pan
     const screenX = effect.x * zoom.level + zoom.panX;
     const screenY = effect.y * zoom.level + zoom.panY;
+
 
     // Verificar si está dentro del viewport
     if (

@@ -141,18 +141,18 @@ function App() {
     setPendingEffectType(type);
   };
 
-  const handleAddEffectAtPosition = (type: string, startX: number, startY: number, endX: number, endY: number) => {
-    // Calcular ancho y alto desde el punto inicial al final
-    const width = Math.abs(endX - startX);
-    const height = Math.abs(endY - startY);
-    
-    // Si el tamaño es muy pequeño, usar tamaño mínimo
-    const finalWidth = Math.max(20, width);
-    const finalHeight = Math.max(20, height);
-    
-    // Centro del efecto (usar el centro exacto del área arrastrada)
-    const centerX = (startX + endX) / 2;
-    const centerY = (startY + endY) / 2;
+      const handleAddEffectAtPosition = (type: string, startX: number, startY: number, endX: number, endY: number) => {
+        // Calcular ancho y alto desde el punto inicial al final
+        const width = Math.abs(endX - startX);
+        const height = Math.abs(endY - startY);
+
+        // Si el tamaño es muy pequeño, usar tamaño mínimo
+        const finalWidth = Math.max(20, width);
+        const finalHeight = Math.max(20, height);
+
+        // Centro del efecto (usar el centro exacto del área arrastrada)
+        const centerX = (startX + endX) / 2;
+        const centerY = (startY + endY) / 2;
     
     // Para efectos, no hacer snap automático - usar la posición exacta
     // Solo calcular gridX/gridY para referencia, pero usar las coordenadas exactas
@@ -388,6 +388,7 @@ function App() {
                     canvasWidth={canvasDimensions.width}
                     canvasHeight={canvasDimensions.height}
                     zoom={zoom}
+                    isPresentationMode={false}
                   />
                 ))}
               </div>
@@ -440,6 +441,7 @@ function App() {
                   canvasWidth={window.innerWidth}
                   canvasHeight={window.innerHeight}
                   zoom={zoom}
+                  isPresentationMode={true}
                 />
               ))}
             </div>
