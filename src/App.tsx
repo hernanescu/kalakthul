@@ -59,28 +59,15 @@ function App() {
     setEffectOpacity,
   } = useEffects(initialState?.effects || []);
 
-  const [mapImage, setMapImage] = useState<string | null>(initialState?.mapImage || null);
-  const [imageBounds, setImageBounds] = useState<ImageBounds | null>(initialState?.imageBounds || null);
-  const [zoom, setZoom] = useState<ZoomState>(
-    initialState?.zoom || { level: 1, panX: 0, panY: 0 }
-  );
+  const [mapImage, setMapImage] = useState<string | null>(null); // Siempre arranca sin mapa
+  const [imageBounds, setImageBounds] = useState<ImageBounds | null>(null);
+  const [zoom, setZoom] = useState<ZoomState>({ level: 1, panX: 0, panY: 0 });
   const [pendingEffectType, setPendingEffectType] = useState<EffectType | null>(null);
   const [currentMapId, setCurrentMapId] = useState<string | undefined>();
   const [defaultEffectShape, setDefaultEffectShape] = useState<'square' | 'circle'>('circle');
 
 
-  // Sincronizar mapImage, imageBounds y zoom cuando se carga el estado inicial
-  useEffect(() => {
-    if (initialState?.mapImage) {
-      setMapImage(initialState.mapImage);
-    }
-    if (initialState?.imageBounds) {
-      setImageBounds(initialState.imageBounds);
-    }
-    if (initialState?.zoom) {
-      setZoom(initialState.zoom);
-    }
-  }, [initialState]);
+  // La app siempre arranca limpia, sin estado guardado
 
   // Calcular dimensiones del canvas
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 600 });
@@ -341,7 +328,7 @@ function App() {
 
           <div className="main-content">
             <div className="sidebar">
-              <CollapsibleSection title="Grilla" defaultExpanded={true}>
+              <CollapsibleSection title="Grilla" defaultExpanded={false}>
                 <GridControls
                   grid={grid}
                   onRowsChange={setRows}
@@ -352,7 +339,7 @@ function App() {
                 />
               </CollapsibleSection>
 
-                    <CollapsibleSection title="Efectos" defaultExpanded={true}>
+                    <CollapsibleSection title="Efectos" defaultExpanded={false}>
                       <EffectControls
                         selectedEffectType={effects.find(e => e.id === selectedEffectId)?.type || null}
                         selectedShape={effects.find(e => e.id === selectedEffectId)?.shape || defaultEffectShape}

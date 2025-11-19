@@ -32,6 +32,7 @@ const MapLibrary: React.FC<MapLibraryProps> = ({ onMapSelect, currentMapId, onTo
   const [isExpanded, setIsExpanded] = useState(false);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
   const [showMapSelector, setShowMapSelector] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [isAddingMap, setIsAddingMap] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -99,7 +100,7 @@ const MapLibrary: React.FC<MapLibraryProps> = ({ onMapSelect, currentMapId, onTo
       <div className="map-library-header">
         {/* Título de la aplicación */}
         <div className="app-title">
-          <h1>Kalak'thuling</h1>
+          <h1>Kalak'thul</h1>
         </div>
 
         {/* Selector de carpeta */}
@@ -190,6 +191,19 @@ const MapLibrary: React.FC<MapLibraryProps> = ({ onMapSelect, currentMapId, onTo
           🖥️ Pantalla completa
         </button>
 
+        {/* Botón de Ayuda */}
+        <button
+          className="action-btn"
+          onClick={() => setShowHelpModal(true)}
+          disabled={false}
+          title="Ayuda - Cómo usar la aplicación"
+          style={{
+            background: '#6a7c9a',
+            borderColor: '#7a8caa'
+          }}
+        >
+          ❓ Ayuda
+        </button>
 
         {/* Estadísticas al final */}
         <div className="storage-stats">
@@ -281,6 +295,81 @@ const MapLibrary: React.FC<MapLibraryProps> = ({ onMapSelect, currentMapId, onTo
                   </button>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de ayuda */}
+      {showHelpModal && (
+        <div className="dialog-overlay" onClick={() => setShowHelpModal(false)}>
+          <div className="help-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>❓ Cómo usar Kalak'thul</h3>
+              <button
+                className="close-btn"
+                onClick={() => setShowHelpModal(false)}
+                title="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+            <div className="help-content">
+              <div className="help-section">
+                <h4>🎯 Inicio</h4>
+                <p>Al abrir la aplicación verás una pantalla de bienvenida. Para comenzar, carga un mapa usando el botón <strong>"📤 Cargar"</strong> en la parte superior.</p>
+              </div>
+
+              <div className="help-section">
+                <h4>🗺️ Gestión de Mapas</h4>
+                <p>
+                  • <strong>Cargar mapas:</strong> Usa "📤 Cargar" para subir imágenes JPG, PNG o WEBP<br/>
+                  • <strong>Organizar:</strong> Crea carpetas con "➕ Carpeta" para organizar tus mapas<br/>
+                  • <strong>Seleccionar:</strong> Usa "🖼️ Mapa" para elegir de mapas guardados<br/>
+                  • <strong>Limpiar:</strong> "🗺️ Limpiar Mapa" para volver a la pantalla de inicio
+                </p>
+              </div>
+
+              <div className="help-section">
+                <h4>🎨 Grilla</h4>
+                <p>
+                  • Expande la sección "Grilla" en el panel izquierdo<br/>
+                  • Configura filas y columnas según tu mapa<br/>
+                  • Ajusta opacidad y color de la grilla<br/>
+                  • Activa/desactiva la visibilidad
+                </p>
+              </div>
+
+              <div className="help-section">
+                <h4>✨ Efectos</h4>
+                <p>
+                  • Expande la sección "Efectos" en el panel izquierdo<br/>
+                  • Elige un tipo de efecto (🔥 Fuego, ❄️ Hielo, ☠️ Veneno, etc.)<br/>
+                  • Haz clic y arrastra en el mapa para definir tamaño y posición<br/>
+                  • Selecciona efectos para editar forma, opacidad o eliminarlos<br/>
+                  • "🗑️ Borrar Todos los Efectos" elimina todos de una vez
+                </p>
+              </div>
+
+              <div className="help-section">
+                <h4>🔍 Zoom y Navegación</h4>
+                <p>
+                  • Usa la rueda del mouse para hacer zoom<br/>
+                  • Mantén Shift + clic para panear el mapa<br/>
+                  • O usa los controles en la sección "Zoom"<br/>
+                  • "🖥️ Pantalla completa" para modo presentación
+                </p>
+              </div>
+
+              <div className="help-section">
+                <h4>💡 Consejos</h4>
+                <p>
+                  • Todos los cambios se guardan automáticamente<br/>
+                  • Puedes tener múltiples mapas organizados en carpetas<br/>
+                  • La grilla no se muestra en la pantalla de inicio<br/>
+                  • Presiona <strong>Esc</strong> para salir del modo presentación
+                </p>
+              </div>
             </div>
           </div>
         </div>

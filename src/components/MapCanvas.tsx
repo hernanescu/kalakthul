@@ -191,7 +191,7 @@ export default function MapCanvas({
           ctx.fillStyle = '#ffffff';
           ctx.font = 'bold 28px Arial';
           ctx.textAlign = 'center';
-          ctx.fillText('🏰 Kalak\'thuling 🏰', canvas.width / 2, canvas.height / 2 - 60);
+          ctx.fillText('🏰 Kalak\'thul 🏰', canvas.width / 2, canvas.height / 2 - 60);
 
           // Subtítulo
           ctx.fillStyle = '#f0f0f0';
