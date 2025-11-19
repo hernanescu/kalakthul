@@ -1,0 +1,440 @@
+/* Librería de Mapas - Header Horizontal */
+.map-library-header {
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+  padding: 8px 16px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 50px;
+  box-sizing: border-box;
+  pointer-events: none; /* No interferir con clicks del canvas */
+}
+
+/* Título de la aplicación */
+.app-title {
+  flex-shrink: 0;
+  pointer-events: auto;
+}
+
+.app-title h1 {
+  margin: 0;
+  color: #e0e0e0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-shadow: 0 0 8px rgba(0, 255, 0, 0.2);
+}
+
+.map-library-loading {
+  color: #ccc;
+  font-size: 14px;
+  padding: 8px 0;
+}
+
+/* Selector de carpeta */
+.folder-selector {
+  position: relative;
+}
+
+.folder-selector-btn {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  min-width: 150px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  pointer-events: auto;
+}
+
+.folder-selector-btn:hover {
+  background: #333;
+  border-color: #555;
+}
+
+.folder-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  margin-top: 4px;
+}
+
+.folder-option {
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.2s;
+}
+
+.folder-option:last-child {
+  border-bottom: none;
+}
+
+.folder-option:hover {
+  background: #333;
+}
+
+.folder-option.active {
+  background: var(--folder-color, #3B82F6);
+  color: white;
+}
+
+.folder-option.active::before {
+  content: '✓';
+  margin-right: 8px;
+  font-weight: bold;
+}
+
+.map-count {
+  color: #ccc;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* Botones de acción */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  background: #333;
+  border: 1px solid #555;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s;
+  white-space: nowrap;
+  height: 28px;
+  pointer-events: auto;
+  flex-shrink: 0; /* Evitar que se expandan */
+}
+
+.action-btn:hover:not(:disabled) {
+  background: #444;
+  border-color: #666;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn.danger {
+  background: #7c4a4a;
+  border-color: #666;
+}
+
+.action-btn.danger:hover {
+  background: #d32f2f;
+  border-color: #f44336;
+}
+
+/* Cuando danger también es presentation-btn, usa colores verdes */
+.action-btn.danger.presentation-btn {
+  background: #4a7c4a;
+  border-color: #5a8c5a;
+}
+
+.action-btn.danger.presentation-btn:hover {
+  background: #5a8c5a;
+  border-color: #6a9c6a;
+}
+
+
+.import-btn {
+  cursor: pointer;
+}
+
+/* Estadísticas de almacenamiento */
+.storage-stats {
+  margin-left: auto;
+  color: #ccc;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.compression-ratio {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+/* Información simple de mapas */
+.map-info-simple {
+  color: #ccc;
+  font-size: 12px;
+  margin-top: 8px;
+  text-align: center;
+}
+
+/* Dialog para nueva carpeta */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.dialog {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 24px;
+  min-width: 300px;
+  color: #fff;
+}
+
+.dialog h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.dialog input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #333;
+  color: #fff;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.dialog input:focus {
+  outline: none;
+  border-color: #4caf50;
+}
+
+.dialog-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.dialog-buttons button {
+  padding: 8px 16px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #333;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.dialog-buttons button:hover {
+  background: #444;
+}
+
+.dialog-buttons button:last-child {
+  background: #4caf50;
+  border-color: #4caf50;
+}
+
+.dialog-buttons button:last-child:hover {
+  background: #45a049;
+}
+
+/* Modal selector de mapas */
+.map-selector-modal {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 8px;
+  max-width: 800px;
+  width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #444;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: #444;
+  color: #fff;
+}
+
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+  padding: 20px;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+.map-selector-item {
+  background: #333;
+  border: 2px solid #555;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.map-selector-item:hover {
+  border-color: #777;
+  transform: translateY(-2px);
+}
+
+.map-selector-item.selected {
+  border-color: #4caf50;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.3);
+}
+
+.map-selector-item .map-thumbnail {
+  width: 100%;
+  height: 80px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #444;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-selector-item .map-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.map-selector-item .map-name {
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-selector-item .map-size {
+  color: #ccc;
+  font-size: 10px;
+  text-align: center;
+}
+
+.delete-map-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(244, 67, 54, 0.8);
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.map-selector-item:hover .delete-map-btn {
+  display: flex;
+}
+
+.delete-map-btn:hover {
+  background: rgba(244, 67, 54, 1);
+  transform: scale(1.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .map-library-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .action-buttons {
+    justify-content: center;
+  }
+
+  .storage-stats {
+    margin-left: 0;
+    justify-content: center;
+  }
+
+  .map-gallery {
+    gap: 8px;
+  }
+
+  .map-item {
+    width: 120px;
+  }
+
+  .map-thumbnail {
+    height: 80px;
+  }
+}

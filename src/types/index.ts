@@ -55,3 +55,31 @@ export interface Effect {
   animationUrl?: string; // URL para animación Lottie o GIF
 }
 
+// Sistema de Librería de Mapas
+export interface MapEntry {
+  id: string;
+  name: string;
+  folderId: string;
+  thumbnail: string;        // base64 miniatura pequeña (200x200px)
+  compressedImage: string;  // imagen comprimida para uso (80% calidad)
+  originalSize: number;     // tamaño original en bytes
+  compressedSize: number;   // tamaño comprimido en bytes
+  dimensions: { width: number; height: number }; // dimensiones originales
+  uploadDate: string;       // ISO string
+  lastUsed: string;         // ISO string
+}
+
+export interface MapFolder {
+  id: string;
+  name: string;
+  color: string;           // color CSS para distinguir carpetas
+  createdAt: string;       // ISO string
+}
+
+export interface MapLibrary {
+  version: string;         // para migraciones futuras
+  folders: MapFolder[];
+  maps: MapEntry[];
+  currentFolder: string;   // ID de la carpeta activa
+}
+

@@ -104,17 +104,17 @@ export default function MapCanvas({
 
       let currentImageBounds: ImageBounds | null = null;
 
-      // Dibujar imagen de mapa
+      // Dibujar imagen de mapa o imagen de inicio
       if (mapImage && imageRef.current && imageRef.current.complete) {
         const img = imageRef.current;
         const imgAspect = img.width / img.height;
         const canvasAspect = canvas.width / canvas.height;
-        
+
         let drawWidth = canvas.width;
         let drawHeight = canvas.height;
         let drawX = 0;
         let drawY = 0;
-        
+
         if (imgAspect > canvasAspect) {
           drawHeight = canvas.width / imgAspect;
           drawY = (canvas.height - drawHeight) / 2;
@@ -122,9 +122,9 @@ export default function MapCanvas({
           drawWidth = canvas.height * imgAspect;
           drawX = (canvas.width - drawWidth) / 2;
         }
-        
+
         ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
-        
+
         currentImageBounds = {
           x: drawX,
           y: drawY,
@@ -135,7 +135,7 @@ export default function MapCanvas({
         };
 
         // Solo actualizar bounds si realmente cambiaron
-        const boundsChanged = 
+        const boundsChanged =
           imageCacheRef.current.src !== mapImage ||
           !imageCacheRef.current.bounds ||
           Math.abs(imageCacheRef.current.bounds.x - currentImageBounds.x) > 0.1 ||
@@ -150,14 +150,67 @@ export default function MapCanvas({
           }
         }
       } else if (!mapImage) {
-        // Fondo gris si no hay mapa
-        ctx.fillStyle = '#2a2a2a';
+        // Dibujar imagen de inicio cuando no hay mapa cargado
+        ctx.fillStyle = '#1a1a1a';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        if (imageCacheRef.current.src !== null) {
-          imageCacheRef.current = { src: null, bounds: null };
-          if (onImageBoundsChange) {
-            onImageBoundsChange(null);
+
+        // Cargar y dibujar imagen de bienvenida
+        const welcomeImg = new Image();
+        welcomeImg.onload = () => {
+          // Dibujar imagen centrada y escalada para llenar el canvas
+          const imgAspect = welcomeImg.width / welcomeImg.height;
+          const canvasAspect = canvas.width / canvas.height;
+
+          let drawWidth = canvas.width;
+          let drawHeight = canvas.height;
+          let drawX = 0;
+          let drawY = 0;
+
+          if (imgAspect > canvasAspect) {
+            // Imagen más ancha que el canvas - centrar verticalmente
+            drawHeight = canvas.width / imgAspect;
+            drawY = (canvas.height - drawHeight) / 2;
+          } else {
+            // Imagen más alta que el canvas - centrar horizontalmente
+            drawWidth = canvas.height * imgAspect;
+            drawX = (canvas.width - drawWidth) / 2;
           }
+
+          ctx.drawImage(welcomeImg, drawX, drawY, drawWidth, drawHeight);
+
+          // Dibujar texto de bienvenida por encima de la imagen
+          ctx.save();
+
+          // Configurar sombreado para mejor legibilidad
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+          ctx.shadowBlur = 4;
+          ctx.shadowOffsetX = 2;
+          ctx.shadowOffsetY = 2;
+
+          // Título principal
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 28px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('🏰 Kalak\'thuling 🏰', canvas.width / 2, canvas.height / 2 - 60);
+
+          // Subtítulo
+          ctx.fillStyle = '#f0f0f0';
+          ctx.font = '18px Arial';
+          ctx.fillText('Carga un mapa para comenzar tu aventura', canvas.width / 2, canvas.height / 2 - 20);
+
+          // Instrucción
+          ctx.fillStyle = '#cccccc';
+          ctx.font = '14px Arial';
+          ctx.fillText('Usa el botón "📤 Cargar" en la parte superior', canvas.width / 2, canvas.height / 2 + 10);
+
+          ctx.restore();
+        };
+        welcomeImg.src = '/images/welcome.jpg';
+
+        // No hay bounds para la imagen de inicio
+        currentImageBounds = null;
+        if (onImageBoundsChange) {
+          onImageBoundsChange(null);
         }
       }
 

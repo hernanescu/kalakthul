@@ -10,6 +10,7 @@ import ZoomControls from './components/ZoomControls';
 import EffectControls from './components/EffectControls';
 import CollapsibleSection from './components/CollapsibleSection';
 import EffectRenderer from './components/EffectRenderer';
+import MapLibrary from './components/MapLibrary';
 import './App.css';
 
 const STORAGE_KEY = 'ttrpg-map-state';
@@ -64,6 +65,7 @@ function App() {
     initialState?.zoom || { level: 1, panX: 0, panY: 0 }
   );
   const [pendingEffectType, setPendingEffectType] = useState<EffectType | null>(null);
+  const [currentMapId, setCurrentMapId] = useState<string | undefined>();
   const [defaultEffectShape, setDefaultEffectShape] = useState<'square' | 'circle'>('circle');
 
 
@@ -106,6 +108,17 @@ function App() {
     return () => window.removeEventListener('resize', updateDimensions);
   }, [isPresentationMode]);
 
+  const handleClearMap = () => {
+    setMapImage(null);
+    setImageBounds(null);
+    // Limpiar zoom y efectos también
+    setZoom({ level: 1, panX: 0, panY: 0 });
+    // Limpiar efectos
+    effects.forEach(effect => {
+      deleteEffect(effect.id);
+    });
+  };
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -124,6 +137,14 @@ function App() {
       alert('Error al cargar la imagen');
       console.error(error);
     }
+  };
+
+  const handleMapSelect = (mapEntry: any) => {
+    setMapImage(mapEntry.compressedImage);
+    setCurrentMapId(mapEntry.id);
+    // Reset zoom and effects when changing maps
+    setZoom({ level: 1, panX: 0, panY: 0 });
+    // Keep effects for now, but could reset them if preferred
   };
 
 
@@ -184,6 +205,13 @@ function App() {
     if (selectedEffectId) {
       deleteEffect(selectedEffectId);
     }
+  };
+
+  const handleDeleteAllEffects = () => {
+    // Borrar todos los efectos
+    effects.forEach(effect => {
+      deleteEffect(effect.id);
+    });
   };
 
   const handleEffectShapeChange = (shape: 'square' | 'circle') => {
@@ -301,18 +329,18 @@ function App() {
         style={{ display: 'none' }}
       />
 
+      {/* Header con librería de mapas y contenido principal */}
       {!isPresentationMode && (
-        <div className="sidebar">
-          <div className="header">
-            <h1>Kalak'thuling</h1>
-            <button onClick={() => fileInputRef.current?.click()} className="load-map-btn">
-              Cargar Mapa
-            </button>
-            <button onClick={togglePresentationMode} className="presentation-btn">
-              Modo Presentación
-            </button>
-          </div>
+        <>
+          <MapLibrary
+            onMapSelect={handleMapSelect}
+            currentMapId={currentMapId}
+            onTogglePresentation={togglePresentationMode}
+            onClearMap={handleClearMap}
+          />
 
+          <div className="main-content">
+            <div className="sidebar">
               <CollapsibleSection title="Grilla" defaultExpanded={true}>
                 <GridControls
                   grid={grid}
@@ -324,18 +352,18 @@ function App() {
                 />
               </CollapsibleSection>
 
-              <CollapsibleSection title="Efectos" defaultExpanded={true}>
-                <EffectControls
-                  selectedEffectType={effects.find(e => e.id === selectedEffectId)?.type || null}
-                  selectedShape={effects.find(e => e.id === selectedEffectId)?.shape || defaultEffectShape}
-                  onAddEffect={handleAddEffect}
-                  onDeleteEffect={handleDeleteEffect}
-                  onShapeChange={handleEffectShapeChange}
-                  onOpacityChange={handleEffectOpacityChange}
-                  selectedOpacity={effects.find(e => e.id === selectedEffectId)?.opacity}
-                />
-              </CollapsibleSection>
-
+                    <CollapsibleSection title="Efectos" defaultExpanded={true}>
+                      <EffectControls
+                        selectedEffectType={effects.find(e => e.id === selectedEffectId)?.type || null}
+                        selectedShape={effects.find(e => e.id === selectedEffectId)?.shape || defaultEffectShape}
+                        onAddEffect={handleAddEffect}
+                        onDeleteEffect={handleDeleteEffect}
+                        onDeleteAllEffects={handleDeleteAllEffects}
+                        onShapeChange={handleEffectShapeChange}
+                        onOpacityChange={handleEffectOpacityChange}
+                        selectedOpacity={effects.find(e => e.id === selectedEffectId)?.opacity}
+                      />
+                    </CollapsibleSection>
 
               <CollapsibleSection title="Zoom" defaultExpanded={false}>
                 <ZoomControls
@@ -345,10 +373,61 @@ function App() {
                   onZoomReset={handleZoomReset}
                 />
               </CollapsibleSection>
-        </div>
+            </div>
+
+            <div className="canvas-container">
+              <MapCanvas
+                mapImage={mapImage}
+                imageBounds={imageBounds}
+                grid={grid}
+                effects={effects}
+                selectedEffectId={selectedEffectId}
+                pendingEffectType={pendingEffectType}
+                zoom={zoom}
+                onEffectClick={handleEffectClick}
+                onEffectDrag={handleEffectDrag}
+                onAddEffectAtPosition={handleAddEffectAtPosition}
+                onImageBoundsChange={handleImageBoundsChange}
+                onZoomChange={handleZoomChange}
+                canvasDimensions={canvasDimensions}
+              />
+              {/* Renderizar efectos sobre el canvas */}
+              <div className="effects-layer">
+                {effects.map((effect) => (
+                  <EffectRenderer
+                    key={effect.id}
+                    effect={effect}
+                    imageBounds={imageBounds}
+                    canvasWidth={canvasDimensions.width}
+                    canvasHeight={canvasDimensions.height}
+                    zoom={zoom}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
-      <div className="canvas-container">
+      {isPresentationMode && (
+        <>
+          <ZoomControls
+            zoom={zoom}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onZoomReset={handleZoomReset}
+            compact={true}
+          />
+          <button
+            onClick={togglePresentationMode}
+            className="exit-presentation-btn"
+            title="Salir del modo presentación (Esc)"
+          >
+            ✕
+          </button>
+
+          {/* Canvas en modo presentación - sin header/sidebar */}
+          <div className="presentation-canvas-container">
             <MapCanvas
               mapImage={mapImage}
               imageBounds={imageBounds}
@@ -362,40 +441,24 @@ function App() {
               onAddEffectAtPosition={handleAddEffectAtPosition}
               onImageBoundsChange={handleImageBoundsChange}
               onZoomChange={handleZoomChange}
-              canvasDimensions={canvasDimensions}
+              canvasDimensions={{ width: window.innerWidth, height: window.innerHeight }}
             />
-        {/* Renderizar efectos sobre el canvas */}
-        <div className="effects-layer">
-          {effects.map((effect) => (
-            <EffectRenderer
-              key={effect.id}
-              effect={effect}
-              imageBounds={imageBounds}
-              canvasWidth={canvasDimensions.width}
-              canvasHeight={canvasDimensions.height}
-              zoom={zoom}
-            />
-          ))}
-        </div>
-        {isPresentationMode && (
-          <>
-            <ZoomControls
-              zoom={zoom}
-              onZoomIn={handleZoomIn}
-              onZoomOut={handleZoomOut}
-              onZoomReset={handleZoomReset}
-              compact={true}
-            />
-            <button
-              onClick={togglePresentationMode}
-              className="exit-presentation-btn"
-              title="Salir del modo presentación (Esc)"
-            >
-              ✕
-            </button>
-          </>
-        )}
-      </div>
+            {/* Renderizar efectos sobre el canvas */}
+            <div className="effects-layer">
+              {effects.map((effect) => (
+                <EffectRenderer
+                  key={effect.id}
+                  effect={effect}
+                  imageBounds={imageBounds}
+                  canvasWidth={window.innerWidth}
+                  canvasHeight={window.innerHeight}
+                  zoom={zoom}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ interface EffectControlsProps {
   selectedShape?: EffectShape;
   onAddEffect: (type: EffectType) => void;
   onDeleteEffect: () => void;
+  onDeleteAllEffects: () => void;
   onShapeChange: (shape: EffectShape) => void;
   onOpacityChange: (opacity: number) => void;
   selectedOpacity?: number;
@@ -27,6 +28,7 @@ export default function EffectControls({
   selectedShape = 'circle',
   onAddEffect,
   onDeleteEffect,
+  onDeleteAllEffects,
   onShapeChange,
   onOpacityChange,
   selectedOpacity = 0.8,
@@ -90,6 +92,20 @@ export default function EffectControls({
           <div className="control-group">
             <button onClick={onDeleteEffect} className="delete-btn">
               Eliminar Efecto
+            </button>
+          </div>
+
+          <div className="control-group">
+            <button
+              onClick={() => {
+                if (window.confirm('¿Estás seguro de que quieres eliminar TODOS los efectos?')) {
+                  onDeleteAllEffects();
+                }
+              }}
+              className="delete-all-btn"
+              title="Eliminar todos los efectos del mapa"
+            >
+              🗑️ Borrar Todos los Efectos
             </button>
           </div>
         </>

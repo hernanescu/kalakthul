@@ -6,7 +6,7 @@ const DEFAULT_GRID: GridConfig = {
   columns: 10,
   opacity: 0.5,
   color: '#ffffff',
-  visible: true,
+  visible: false,
 };
 
 export function useGrid(initialGrid?: GridConfig) {
