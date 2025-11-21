@@ -1,6 +1,31 @@
 import { useRef, useEffect, useState } from 'react';
-import { GridConfig, ImageBounds, ZoomState, Effect, FogOfWarState, FogTool } from '../types';
+import { GridConfig, ImageBounds, ZoomState, Effect, FogOfWarState, FogTool, Polygon } from '../types';
 import { calculateGridDimensions, drawGrid } from '../utils/canvasRender';
+
+// Función helper para detectar si un punto está dentro de un polígono (ray casting algorithm)
+function isPointInPolygon(point: { x: number; y: number }, polygon: Polygon, zoom: ZoomState): boolean {
+  if (polygon.points.length < 3) return false;
+
+  // Convertir coordenadas del polígono a coordenadas de pantalla
+  const screenPoints = polygon.points.map(p => ({
+    x: p.x * zoom.level + zoom.panX,
+    y: p.y * zoom.level + zoom.panY,
+  }));
+
+  let inside = false;
+  for (let i = 0, j = screenPoints.length - 1; i < screenPoints.length; j = i++) {
+    const xi = screenPoints[i].x;
+    const yi = screenPoints[i].y;
+    const xj = screenPoints[j].x;
+    const yj = screenPoints[j].y;
+
+    const intersect = ((yi > point.y) !== (yj > point.y)) &&
+      (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+
+  return inside;
+}
 
 // Función helper para dibujar preview de polígono actual
 function drawPolygonPreview(ctx: CanvasRenderingContext2D, points: { x: number; y: number }[], isDarkness: boolean = false) {
@@ -56,8 +81,10 @@ interface MapCanvasProps {
   fogEditMode?: boolean;
   fogSelectedTool?: FogTool;
   fogCurrentPolygon?: { x: number; y: number }[];
+  fogSelectedDarknessAreaId?: string | null;
   onFogPolygonPoint?: (x: number, y: number) => void;
   onFogFinishPolygon?: () => void;
+  onFogSelectDarknessArea?: (polygonId: string | null) => void;
 }
 
 export default function MapCanvas({
@@ -78,8 +105,10 @@ export default function MapCanvas({
   fogEditMode = false,
   fogSelectedTool = null,
   fogCurrentPolygon = [],
+  fogSelectedDarknessAreaId = null,
   onFogPolygonPoint,
   onFogFinishPolygon,
+  onFogSelectDarknessArea,
 }: MapCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCacheRef = useRef<{ src: string | null; bounds: ImageBounds | null }>({ src: null, bounds: null });
@@ -304,6 +333,34 @@ export default function MapCanvas({
           }
         });
 
+        // Dibujar resaltado de la zona seleccionada
+        if (fogSelectedDarknessAreaId) {
+          const selectedPolygon = fogOfWar.darknessAreas.find(p => p.id === fogSelectedDarknessAreaId);
+          if (selectedPolygon && selectedPolygon.points.length >= 3) {
+            ctx.save();
+            ctx.strokeStyle = '#4a9eff';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            
+            const firstPoint = selectedPolygon.points[0];
+            const screenX = firstPoint.x * safeZoom.level + safeZoom.panX;
+            const screenY = firstPoint.y * safeZoom.level + safeZoom.panY;
+            ctx.moveTo(screenX, screenY);
+
+            for (let i = 1; i < selectedPolygon.points.length; i++) {
+              const point = selectedPolygon.points[i];
+              const px = point.x * safeZoom.level + safeZoom.panX;
+              const py = point.y * safeZoom.level + safeZoom.panY;
+              ctx.lineTo(px, py);
+            }
+            
+            ctx.closePath();
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+
         ctx.restore();
       }
 
@@ -343,7 +400,7 @@ export default function MapCanvas({
     };
 
     render();
-  }, [mapImage, imageLoaded, imageBounds, grid, canvasDimensions, zoom, onImageBoundsChange, isCreatingEffect, effectCreationStart, effectCreationCurrent, pendingEffectType, fogOfWar, fogEditMode, fogSelectedTool, fogCurrentPolygon]);
+  }, [mapImage, imageLoaded, imageBounds, grid, canvasDimensions, zoom, onImageBoundsChange, isCreatingEffect, effectCreationStart, effectCreationCurrent, pendingEffectType, fogOfWar, fogEditMode, fogSelectedTool, fogCurrentPolygon, fogSelectedDarknessAreaId]);
 
   // Convertir coordenadas del mouse a coordenadas del canvas con zoom
   // Coordenadas absolutas del canvas considerando zoom y pan
@@ -450,10 +507,46 @@ export default function MapCanvas({
         }
 
         // Solo si NO hay efectos pendientes o clicados, verificar modo edición de niebla
-        if (fogEditMode && fogSelectedTool && onFogPolygonPoint) {
-          e.preventDefault();
-          onFogPolygonPoint(canvasCoords.x, canvasCoords.y);
-          return;
+        if (fogEditMode && fogSelectedTool) {
+          // Modo selección: detectar si click está dentro de alguna zona de oscuridad
+          if (fogSelectedTool === 'select' && fogOfWar?.darknessAreas && onFogSelectDarknessArea) {
+            e.preventDefault();
+            // Definir safeZoom para la detección
+            const safeZoom = {
+              level: zoom?.level && zoom.level > 0 ? zoom.level : 1,
+              panX: zoom?.panX || 0,
+              panY: zoom?.panY || 0,
+            };
+            // Buscar la primera zona que contenga el punto (de atrás hacia adelante para seleccionar la última dibujada)
+            let clickedPolygon: Polygon | null = null;
+            for (let i = fogOfWar.darknessAreas.length - 1; i >= 0; i--) {
+              const polygon = fogOfWar.darknessAreas[i];
+              if (isPointInPolygon(canvasCoords, polygon, safeZoom)) {
+                clickedPolygon = polygon;
+                break;
+              }
+            }
+            
+            if (clickedPolygon) {
+              // Si clickeamos la misma zona, deseleccionar; si no, seleccionar la nueva
+              if (fogSelectedDarknessAreaId === clickedPolygon.id) {
+                onFogSelectDarknessArea(null);
+              } else {
+                onFogSelectDarknessArea(clickedPolygon.id);
+              }
+            } else {
+              // Click fuera de cualquier zona, deseleccionar
+              onFogSelectDarknessArea(null);
+            }
+            return;
+          }
+          
+          // Modo creación: agregar punto al polígono
+          if (fogSelectedTool === 'darkness' && onFogPolygonPoint) {
+            e.preventDefault();
+            onFogPolygonPoint(canvasCoords.x, canvasCoords.y);
+            return;
+          }
         }
 
         // Nota: No deseleccionar automáticamente al hacer clic en el canvas vacío

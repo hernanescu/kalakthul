@@ -95,5 +95,5 @@ export interface FogOfWarState {
   darknessAreas: Polygon[]; // Áreas de oscuridad total (negras)
 }
 
-export type FogTool = 'darkness' | null;
+export type FogTool = 'darkness' | 'select' | null;
 

@@ -6,12 +6,14 @@ interface FogControlsProps {
   isEditMode: boolean;
   selectedTool: FogTool;
   darknessAreasCount: number;
+  selectedDarknessAreaId: string | null;
   onToggleFog: () => void;
   onEnterEditMode: () => void;
   onExitEditMode: () => void;
   onSelectTool: (tool: FogTool) => void;
   onResetFog: () => void;
   onClearAllFog: () => void;
+  onDeleteSelectedDarknessArea: () => void;
 }
 
 export default function FogControls({
@@ -19,12 +21,14 @@ export default function FogControls({
   isEditMode,
   selectedTool,
   darknessAreasCount,
+  selectedDarknessAreaId,
   onToggleFog,
   onEnterEditMode,
   onExitEditMode,
   onSelectTool,
   onResetFog,
   onClearAllFog,
+  onDeleteSelectedDarknessArea,
 }: FogControlsProps) {
   return (
     <div className="fog-controls">
@@ -67,9 +71,15 @@ export default function FogControls({
                   onClick={() => onSelectTool('darkness')}
                   className={`fog-tool-btn ${selectedTool === 'darkness' ? 'active' : ''}`}
                   title="Añadir Oscuridad - Haz clic en puntos del mapa para crear un área oscura"
-                  style={{ width: '100%' }}
                 >
                   🌑 Añadir Oscuridad
+                </button>
+                <button
+                  onClick={() => onSelectTool('select')}
+                  className={`fog-tool-btn ${selectedTool === 'select' ? 'active' : ''}`}
+                  title="Seleccionar Zonas - Haz clic en una zona existente para seleccionarla"
+                >
+                  👆 Seleccionar Zonas
                 </button>
               </div>
 
@@ -77,6 +87,29 @@ export default function FogControls({
                 <div className="fog-hint">
                   <strong>Instrucciones:</strong>
                   Haz clic en varios puntos del mapa para delinear el área que quieres oscurecer. Doble clic o presiona Enter para finalizar.
+                </div>
+              )}
+
+              {selectedTool === 'select' && (
+                <div className="fog-hint">
+                  <strong>Instrucciones:</strong>
+                  Haz clic en una zona de oscuridad para seleccionarla. Haz clic fuera de las zonas para deseleccionar.
+                </div>
+              )}
+
+              {selectedDarknessAreaId && selectedTool === 'select' && (
+                <div className="fog-actions" style={{ marginTop: '1rem' }}>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('¿Estás seguro de que quieres eliminar esta zona de oscuridad?')) {
+                        onDeleteSelectedDarknessArea();
+                      }
+                    }}
+                    className="fog-action-btn danger"
+                    title="Eliminar la zona de oscuridad seleccionada"
+                  >
+                    🗑️ Eliminar Zona Seleccionada
+                  </button>
                 </div>
               )}
             </>

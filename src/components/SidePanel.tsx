@@ -30,12 +30,14 @@ interface SidePanelProps {
   fogIsEditMode: boolean;
   fogSelectedTool: FogTool;
   fogDarknessAreasCount: number;
+  fogSelectedDarknessAreaId: string | null;
   onToggleFog: () => void;
   onEnterEditMode: () => void;
   onExitEditMode: () => void;
   onSelectTool: (tool: FogTool) => void;
   onResetFog: () => void;
   onClearAllFog: () => void;
+  onDeleteSelectedDarknessArea: () => void;
 
   // Zoom props
   zoom: { level: number; panX: number; panY: number };
@@ -63,12 +65,14 @@ export function SidePanel({
   fogIsEditMode,
   fogSelectedTool,
   fogDarknessAreasCount,
+  fogSelectedDarknessAreaId,
   onToggleFog,
   onEnterEditMode,
   onExitEditMode,
   onSelectTool,
   onResetFog,
   onClearAllFog,
+  onDeleteSelectedDarknessArea,
   zoom,
   onZoomIn,
   onZoomOut,
@@ -106,12 +110,14 @@ export function SidePanel({
           isEditMode={fogIsEditMode}
           selectedTool={fogSelectedTool}
           darknessAreasCount={fogDarknessAreasCount}
+          selectedDarknessAreaId={fogSelectedDarknessAreaId}
           onToggleFog={onToggleFog}
           onEnterEditMode={onEnterEditMode}
           onExitEditMode={onExitEditMode}
           onSelectTool={onSelectTool}
           onResetFog={onResetFog}
           onClearAllFog={onClearAllFog}
+          onDeleteSelectedDarknessArea={onDeleteSelectedDarknessArea}
         />
       </CollapsibleSection>
 

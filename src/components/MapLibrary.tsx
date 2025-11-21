@@ -317,7 +317,10 @@ const MapLibrary: React.FC<MapLibraryProps> = ({ onMapSelect, currentMapId, onTo
             <div className="help-content">
               <div className="help-section">
                 <h4>🎯 Inicio</h4>
-                <p>Al abrir la aplicación verás una pantalla de bienvenida. Para comenzar, carga un mapa usando el botón <strong>"📤 Cargar"</strong> en la parte superior.</p>
+                <p>
+                  Al abrir la aplicación verás una pantalla de bienvenida con la imagen de Kalak'thul. Para comenzar, carga un mapa usando el botón <strong>"📤 Cargar"</strong> en la parte superior.<br/>
+                  <strong>Nota:</strong> En modo normal, el panel de controles lateral está oculto para una experiencia más limpia. Los controles solo aparecen en modo pantalla completa.
+                </p>
               </div>
 
               <div className="help-section">
@@ -352,6 +355,20 @@ const MapLibrary: React.FC<MapLibraryProps> = ({ onMapSelect, currentMapId, onTo
               </div>
 
               <div className="help-section">
+                <h4>🌑 Zonas de Oscuridad</h4>
+                <p>
+                  • Expande la sección "Zonas de Oscuridad" en el panel izquierdo<br/>
+                  • Activa las zonas de oscuridad con el checkbox<br/>
+                  • Haz clic en <strong>"✏️ Editar Zonas"</strong> para entrar en modo edición<br/>
+                  • <strong>🌑 Añadir Oscuridad:</strong> Haz clic en varios puntos del mapa para crear un área oscura. Doble clic o Enter para finalizar<br/>
+                  • <strong>👆 Seleccionar Zonas:</strong> Activa esta herramienta y haz clic en una zona existente para seleccionarla (se resaltará en azul)<br/>
+                  • <strong>🗑️ Eliminar Zona Seleccionada:</strong> Aparece cuando tienes una zona seleccionada<br/>
+                  • Haz clic fuera de las zonas o en la misma zona seleccionada para deseleccionar<br/>
+                  • Puedes crear múltiples zonas de oscuridad y eliminarlas individualmente
+                </p>
+              </div>
+
+              <div className="help-section">
                 <h4>🔍 Zoom y Navegación</h4>
                 <p>
                   • Usa la rueda del mouse para hacer zoom<br/>
@@ -362,12 +379,26 @@ const MapLibrary: React.FC<MapLibraryProps> = ({ onMapSelect, currentMapId, onTo
               </div>
 
               <div className="help-section">
+                <h4>🖥️ Modo Pantalla Completa</h4>
+                <p>
+                  • Haz clic en <strong>"🖥️ Pantalla completa"</strong> para entrar en modo presentación<br/>
+                  • En modo pantalla completa, el panel de controles está oculto por defecto<br/>
+                  • <strong>Mueve el cursor al borde izquierdo</strong> de la pantalla para mostrar el panel deslizante<br/>
+                  • El panel se oculta automáticamente cuando quitas el cursor<br/>
+                  • Todos los controles (Grilla, Efectos, Zonas de Oscuridad, Zoom) están disponibles en el panel<br/>
+                  • Presiona <strong>Esc</strong> o haz clic en el botón "✕" para salir del modo presentación
+                </p>
+              </div>
+
+              <div className="help-section">
                 <h4>💡 Consejos</h4>
                 <p>
                   • Todos los cambios se guardan automáticamente<br/>
                   • Puedes tener múltiples mapas organizados en carpetas<br/>
                   • La grilla no se muestra en la pantalla de inicio<br/>
-                  • Presiona <strong>Esc</strong> para salir del modo presentación
+                  • En modo normal, el panel lateral está oculto para una experiencia más limpia<br/>
+                  • El panel lateral solo aparece en modo pantalla completa<br/>
+                  • Las zonas de oscuridad se dibujan sobre el mapa y no se pueden revelar una vez creadas
                 </p>
               </div>
             </div>

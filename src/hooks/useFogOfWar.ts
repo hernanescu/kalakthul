@@ -11,6 +11,7 @@ export function useFogOfWar(initialState?: FogOfWarState) {
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedTool, setSelectedTool] = useState<FogTool>(null);
   const [currentPolygon, setCurrentPolygon] = useState<{ x: number; y: number }[]>([]);
+  const [selectedDarknessAreaId, setSelectedDarknessAreaId] = useState<string | null>(null);
 
   const toggleFog = useCallback(() => {
     setFogState(prev => ({ ...prev, isEnabled: !prev.isEnabled }));
@@ -20,17 +21,23 @@ export function useFogOfWar(initialState?: FogOfWarState) {
     setIsEditMode(true);
     setSelectedTool(null);
     setCurrentPolygon([]);
+    setSelectedDarknessAreaId(null);
   }, []);
 
   const exitEditMode = useCallback(() => {
     setIsEditMode(false);
     setSelectedTool(null);
     setCurrentPolygon([]);
+    setSelectedDarknessAreaId(null);
   }, []);
 
   const selectTool = useCallback((tool: FogTool) => {
     setSelectedTool(tool);
     setCurrentPolygon([]);
+    // Si cambiamos de herramienta, deseleccionar zona
+    if (tool !== 'select') {
+      setSelectedDarknessAreaId(null);
+    }
   }, []);
 
   const addPolygonPoint = useCallback((x: number, y: number) => {
@@ -62,7 +69,11 @@ export function useFogOfWar(initialState?: FogOfWarState) {
       ...prev,
       darknessAreas: prev.darknessAreas.filter(p => p.id !== polygonId),
     }));
-  }, []);
+    // Si eliminamos la zona seleccionada, limpiar selección
+    if (selectedDarknessAreaId === polygonId) {
+      setSelectedDarknessAreaId(null);
+    }
+  }, [selectedDarknessAreaId]);
 
   const clearAllFog = useCallback(() => {
     setFogState(DEFAULT_FOG_STATE);
@@ -80,6 +91,11 @@ export function useFogOfWar(initialState?: FogOfWarState) {
     setIsEditMode(false);
     setSelectedTool(null);
     setCurrentPolygon([]);
+    setSelectedDarknessAreaId(null);
+  }, []);
+
+  const selectDarknessArea = useCallback((polygonId: string | null) => {
+    setSelectedDarknessAreaId(polygonId);
   }, []);
 
   return {
@@ -87,6 +103,7 @@ export function useFogOfWar(initialState?: FogOfWarState) {
     isEditMode,
     selectedTool,
     currentPolygon,
+    selectedDarknessAreaId,
     toggleFog,
     enterEditMode,
     exitEditMode,
@@ -97,5 +114,6 @@ export function useFogOfWar(initialState?: FogOfWarState) {
     clearAllFog,
     resetFog,
     resetAllFog,
+    selectDarknessArea,
   };
 }

@@ -62,14 +62,17 @@ function App() {
     isEditMode,
     selectedTool,
     currentPolygon,
+    selectedDarknessAreaId,
     toggleFog,
     enterEditMode,
     exitEditMode,
     selectTool,
     addPolygonPoint,
     finishPolygon,
+    deletePolygon,
     resetFog,
     resetAllFog,
+    selectDarknessArea,
   } = useFogOfWar(initialState?.fogOfWar);
 
   const [mapImage, setMapImage] = useState<string | null>(null); // Siempre arranca sin mapa
@@ -377,12 +380,18 @@ function App() {
         fogIsEditMode={isEditMode}
         fogSelectedTool={selectedTool}
         fogDarknessAreasCount={fogState.darknessAreas.length}
+        fogSelectedDarknessAreaId={selectedDarknessAreaId}
         onToggleFog={toggleFog}
         onEnterEditMode={enterEditMode}
         onExitEditMode={exitEditMode}
         onSelectTool={selectTool}
         onResetFog={resetFog}
         onClearAllFog={resetAllFog}
+        onDeleteSelectedDarknessArea={() => {
+          if (selectedDarknessAreaId) {
+            deletePolygon(selectedDarknessAreaId);
+          }
+        }}
         zoom={zoom}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
@@ -411,8 +420,10 @@ function App() {
                 fogEditMode={isEditMode}
                 fogSelectedTool={selectedTool}
                 fogCurrentPolygon={currentPolygon}
+                fogSelectedDarknessAreaId={selectedDarknessAreaId}
                 onFogPolygonPoint={addPolygonPoint}
                 onFogFinishPolygon={finishPolygon}
+                onFogSelectDarknessArea={selectDarknessArea}
               />
               {/* Renderizar efectos sobre el canvas */}
               <div className="effects-layer">
