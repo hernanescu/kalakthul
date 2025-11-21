@@ -82,13 +82,15 @@
   flex: 1;
   display: flex;
   overflow: hidden;
-  margin-top: 50px; /* Altura del header */
 }
 
 .canvas-container {
   flex: 1;
   position: relative;
   display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
 }
 
 /* Contenedor del canvas en modo presentación */

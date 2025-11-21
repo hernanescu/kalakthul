@@ -6,13 +6,10 @@ import { loadImageAsBase64 } from './utils/canvasUtils';
 import { pixelToGrid } from './utils/gridUtils';
 import { MapState, ImageBounds, ZoomState, EffectType } from './types';
 import MapCanvas from './components/MapCanvas';
-import GridControls from './components/GridControls';
 import ZoomControls from './components/ZoomControls';
-import EffectControls from './components/EffectControls';
-import FogControls from './components/FogControls';
-import CollapsibleSection from './components/CollapsibleSection';
 import EffectRenderer from './components/EffectRenderer';
 import MapLibrary from './components/MapLibrary';
+import { FullscreenLayout } from './components/FullscreenLayout';
 import './App.css';
 
 const STORAGE_KEY = 'ttrpg-map-state';
@@ -85,31 +82,21 @@ function App() {
 
   // La app siempre arranca limpia, sin estado guardado
 
-  // Calcular dimensiones del canvas
-  const [canvasDimensions, setCanvasDimensions] = useState({ width: 800, height: 600 });
-
-  useEffect(() => {
-    const updateDimensions = () => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        if (isPresentationMode) {
-          setCanvasDimensions({
-            width: window.innerWidth,
-            height: window.innerHeight,
-          });
-        } else {
-          setCanvasDimensions({
-            width: rect.width - 300, // Restar ancho del panel lateral
-            height: rect.height - 20, // Margen pequeño
-          });
-        }
-      }
-    };
-
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
-  }, [isPresentationMode]);
+  // Calcular dimensiones del canvas dinámicamente
+  const getCanvasDimensions = () => {
+    if (isPresentationMode) {
+      return {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      };
+    } else {
+      // En modo normal, el canvas ocupa todo el ancho de la ventana
+      return {
+        width: window.innerWidth,
+        height: window.innerHeight - 50, // Restar altura del header
+      };
+    }
+  };
 
   const handleClearMap = () => {
     setMapImage(null);
@@ -326,6 +313,8 @@ function App() {
     setZoom({ level: 1, panX: 0, panY: 0 });
   }, []);
 
+  // Calcular dimensiones del canvas dinámicamente
+
   return (
     <div
       ref={containerRef}
@@ -339,108 +328,17 @@ function App() {
         style={{ display: 'none' }}
       />
 
-      {/* Header con librería de mapas y contenido principal */}
+      {/* Header con librería de mapas - solo visible en modo normal */}
       {!isPresentationMode && (
-        <>
-          <MapLibrary
-            onMapSelect={handleMapSelect}
-            currentMapId={currentMapId}
-            onTogglePresentation={togglePresentationMode}
-            onClearMap={handleClearMap}
-          />
-
-          <div className="main-content">
-            <div className="sidebar">
-              <CollapsibleSection title="Grilla" defaultExpanded={false}>
-                <GridControls
-                  grid={grid}
-                  onRowsChange={setRows}
-                  onColumnsChange={setColumns}
-                  onOpacityChange={setOpacity}
-                  onColorChange={setColor}
-                  onToggleVisibility={toggleVisibility}
-                />
-              </CollapsibleSection>
-
-                    <CollapsibleSection title="Efectos" defaultExpanded={false}>
-                      <EffectControls
-                        selectedEffectType={effects.find(e => e.id === selectedEffectId)?.type || null}
-                        selectedShape={effects.find(e => e.id === selectedEffectId)?.shape || defaultEffectShape}
-                        onAddEffect={handleAddEffect}
-                        onDeleteEffect={handleDeleteEffect}
-                        onDeleteAllEffects={handleDeleteAllEffects}
-                        onShapeChange={handleEffectShapeChange}
-                        onOpacityChange={handleEffectOpacityChange}
-                        selectedOpacity={effects.find(e => e.id === selectedEffectId)?.opacity}
-                      />
-                    </CollapsibleSection>
-
-              <CollapsibleSection title="Zonas de Oscuridad" defaultExpanded={false}>
-                <FogControls
-                  isEnabled={fogState.isEnabled}
-                  isEditMode={isEditMode}
-                  selectedTool={selectedTool}
-                  darknessAreasCount={fogState.darknessAreas.length}
-                  onToggleFog={toggleFog}
-                  onEnterEditMode={enterEditMode}
-                  onExitEditMode={exitEditMode}
-                  onSelectTool={selectTool}
-                  onResetFog={resetFog}
-                  onClearAllFog={resetAllFog}
-                />
-              </CollapsibleSection>
-
-              <CollapsibleSection title="Zoom" defaultExpanded={false}>
-                <ZoomControls
-                  zoom={zoom}
-                  onZoomIn={handleZoomIn}
-                  onZoomOut={handleZoomOut}
-                  onZoomReset={handleZoomReset}
-                />
-              </CollapsibleSection>
-            </div>
-
-            <div className="canvas-container">
-              <MapCanvas
-                mapImage={mapImage}
-                imageBounds={imageBounds}
-                grid={grid}
-                effects={effects}
-                selectedEffectId={selectedEffectId}
-                pendingEffectType={pendingEffectType}
-                zoom={zoom}
-                onEffectClick={handleEffectClick}
-                onEffectDrag={handleEffectDrag}
-                onAddEffectAtPosition={handleAddEffectAtPosition}
-                onImageBoundsChange={handleImageBoundsChange}
-                onZoomChange={handleZoomChange}
-                canvasDimensions={canvasDimensions}
-                fogOfWar={fogState}
-                fogEditMode={isEditMode}
-                fogSelectedTool={selectedTool}
-                fogCurrentPolygon={currentPolygon}
-                onFogPolygonPoint={addPolygonPoint}
-                onFogFinishPolygon={finishPolygon}
-              />
-              {/* Renderizar efectos sobre el canvas */}
-              <div className="effects-layer">
-                {effects.map((effect) => (
-                  <EffectRenderer
-                    key={effect.id}
-                    effect={effect}
-                    imageBounds={imageBounds}
-                    canvasWidth={canvasDimensions.width}
-                    canvasHeight={canvasDimensions.height}
-                    zoom={zoom}
-                    isPresentationMode={false}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        </>
+        <MapLibrary
+          onMapSelect={handleMapSelect}
+          currentMapId={currentMapId}
+          onTogglePresentation={togglePresentationMode}
+          onClearMap={handleClearMap}
+        />
       )}
 
+      {/* Controles de zoom compactos en modo presentación */}
       {isPresentationMode && (
         <>
           <ZoomControls
@@ -457,45 +355,83 @@ function App() {
           >
             ✕
           </button>
-
-          {/* Canvas en modo presentación - sin header/sidebar */}
-          <div className="presentation-canvas-container">
-            <MapCanvas
-              mapImage={mapImage}
-              imageBounds={imageBounds}
-              grid={grid}
-              effects={effects}
-              selectedEffectId={selectedEffectId}
-              pendingEffectType={pendingEffectType}
-              zoom={zoom}
-              onEffectClick={handleEffectClick}
-              onEffectDrag={handleEffectDrag}
-              onAddEffectAtPosition={handleAddEffectAtPosition}
-              onImageBoundsChange={handleImageBoundsChange}
-              onZoomChange={handleZoomChange}
-              canvasDimensions={{ width: window.innerWidth, height: window.innerHeight }}
-              fogOfWar={fogState}
-              fogEditMode={false} // En modo presentación no hay edición
-              fogSelectedTool={null}
-              fogCurrentPolygon={[]}
-            />
-            {/* Renderizar efectos sobre el canvas */}
-            <div className="effects-layer">
-              {effects.map((effect) => (
-                <EffectRenderer
-                  key={effect.id}
-                  effect={effect}
-                  imageBounds={imageBounds}
-                  canvasWidth={window.innerWidth}
-                  canvasHeight={window.innerHeight}
-                  zoom={zoom}
-                  isPresentationMode={true}
-                />
-              ))}
-            </div>
-          </div>
         </>
       )}
+
+      <FullscreenLayout
+        grid={grid}
+        onRowsChange={setRows}
+        onColumnsChange={setColumns}
+        onOpacityChange={setOpacity}
+        onColorChange={setColor}
+        onToggleVisibility={toggleVisibility}
+        selectedEffectType={effects.find(e => e.id === selectedEffectId)?.type || null}
+        selectedShape={effects.find(e => e.id === selectedEffectId)?.shape || defaultEffectShape}
+        selectedOpacity={effects.find(e => e.id === selectedEffectId)?.opacity}
+        onAddEffect={handleAddEffect}
+        onDeleteEffect={handleDeleteEffect}
+        onDeleteAllEffects={handleDeleteAllEffects}
+        onShapeChange={handleEffectShapeChange}
+        onEffectOpacityChange={handleEffectOpacityChange}
+        fogIsEnabled={fogState.isEnabled}
+        fogIsEditMode={isEditMode}
+        fogSelectedTool={selectedTool}
+        fogDarknessAreasCount={fogState.darknessAreas.length}
+        onToggleFog={toggleFog}
+        onEnterEditMode={enterEditMode}
+        onExitEditMode={exitEditMode}
+        onSelectTool={selectTool}
+        onResetFog={resetFog}
+        onClearAllFog={resetAllFog}
+        zoom={zoom}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onZoomReset={handleZoomReset}
+      >
+        {/* Canvas container */}
+        {(() => {
+          const currentCanvasDimensions = getCanvasDimensions();
+          return (
+            <div className={isPresentationMode ? "presentation-canvas-container" : "canvas-container"}>
+              <MapCanvas
+                mapImage={mapImage}
+                imageBounds={imageBounds}
+                grid={grid}
+                effects={effects}
+                selectedEffectId={selectedEffectId}
+                pendingEffectType={pendingEffectType}
+                zoom={zoom}
+                onEffectClick={handleEffectClick}
+                onEffectDrag={handleEffectDrag}
+                onAddEffectAtPosition={handleAddEffectAtPosition}
+                onImageBoundsChange={handleImageBoundsChange}
+                onZoomChange={handleZoomChange}
+                canvasDimensions={currentCanvasDimensions}
+                fogOfWar={fogState}
+                fogEditMode={isEditMode}
+                fogSelectedTool={selectedTool}
+                fogCurrentPolygon={currentPolygon}
+                onFogPolygonPoint={addPolygonPoint}
+                onFogFinishPolygon={finishPolygon}
+              />
+              {/* Renderizar efectos sobre el canvas */}
+              <div className="effects-layer">
+                {effects.map((effect) => (
+                  <EffectRenderer
+                    key={effect.id}
+                    effect={effect}
+                    imageBounds={imageBounds}
+                    canvasWidth={currentCanvasDimensions.width}
+                    canvasHeight={currentCanvasDimensions.height}
+                    zoom={zoom}
+                    isPresentationMode={isPresentationMode}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+      </FullscreenLayout>
     </div>
   );
 }

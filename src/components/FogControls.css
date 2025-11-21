@@ -1,15 +1,15 @@
 .fog-controls {
-  padding: 15px;
-  border: 1px solid #ddd;
+  background-color: #2a2a2a;
+  padding: 1rem 1rem 1rem 1rem; /* Padding explícitamente simétrico */
   border-radius: 8px;
-  background: #f9f9f9;
-  margin-bottom: 15px;
+  margin-bottom: 1rem;
+  box-sizing: border-box;
 }
 
 .fog-controls h3 {
-  margin: 0 0 15px 0;
-  color: #333;
-  font-size: 1.1em;
+  margin-bottom: 1rem;
+  color: #e0e0e0;
+  font-size: 1.1rem;
 }
 
 .fog-toggle {
@@ -21,7 +21,7 @@
 
 .fog-toggle label {
   font-weight: 500;
-  color: #555;
+  color: #b0b0b0;
 }
 
 .fog-toggle input[type="checkbox"] {
@@ -31,46 +31,47 @@
 }
 
 .fog-edit-section {
-  border-top: 1px solid #eee;
-  padding-top: 15px;
+  border-top: 1px solid #444;
+  padding-top: 1rem;
 }
 
 .fog-edit-section h4 {
-  margin: 0 0 10px 0;
-  color: #666;
-  font-size: 0.95em;
+  margin: 0 0 1rem 0;
+  color: #b0b0b0;
+  font-size: 0.95rem;
 }
 
 .fog-tools {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 15px;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 .fog-tool-btn {
-  padding: 8px 12px;
-  border: 2px solid #ddd;
-  background: white;
-  border-radius: 6px;
+  padding: 0.5rem;
+  border: 1px solid #666;
+  background-color: #4a4a4a;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 0.9em;
+  font-size: 0.9rem;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 0.5rem;
+  color: #e0e0e0;
 }
 
 .fog-tool-btn:hover {
-  border-color: #bbb;
-  background: #f5f5f5;
+  border-color: #888;
+  background-color: #5a5a5a;
 }
 
 .fog-tool-btn.active {
-  border-color: #007bff;
-  background: #e7f3ff;
-  color: #007bff;
+  border-color: #4a9eff;
+  background-color: #3a7bd5;
+  color: #ffffff;
 }
 
 .fog-tool-btn:disabled {
@@ -81,21 +82,22 @@
 .fog-actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .fog-action-btn {
-  padding: 6px 12px;
-  border: 1px solid #ddd;
-  background: white;
+  padding: 0.5rem;
+  border: 1px solid #666;
+  background-color: #4a4a4a;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.85em;
+  font-size: 0.85rem;
   transition: all 0.2s;
+  color: #e0e0e0;
 }
 
 .fog-action-btn:hover {
-  background: #f5f5f5;
+  background-color: #5a5a5a;
 }
 
 .fog-action-btn.danger {
@@ -104,16 +106,17 @@
 }
 
 .fog-action-btn.danger:hover {
-  background: #ffeaea;
+  background-color: #2a1a1a;
 }
 
 .fog-stats {
-  margin-top: 15px;
-  padding: 10px;
-  background: #f8f9fa;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: #1a1a1a;
+  border: 1px solid #444;
   border-radius: 4px;
-  font-size: 0.85em;
-  color: #666;
+  font-size: 0.85rem;
+  color: #b0b0b0;
 }
 
 .fog-stats div {
@@ -125,13 +128,13 @@
 }
 
 .fog-hint {
-  margin-top: 15px;
-  padding: 10px;
-  background: #e7f3ff;
-  border: 1px solid #b8daff;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: #1a1a1a;
+  border: 1px solid #444;
   border-radius: 4px;
-  font-size: 0.85em;
-  color: #004085;
+  font-size: 0.85rem;
+  color: #888;
   line-height: 1.4;
 }
 
