@@ -1,9 +1,10 @@
 import GridControls from './GridControls';
 import EffectControls from './EffectControls';
 import FogControls from './FogControls';
+import ParticleControls from './ParticleControls';
 import ZoomControls from './ZoomControls';
 import CollapsibleSection from './CollapsibleSection';
-import { GridConfig, EffectType, FogTool } from '../types';
+import { GridConfig, EffectType, FogTool, ParticleType } from '../types';
 import './SidePanel.css';
 
 interface SidePanelProps {
@@ -44,6 +45,16 @@ interface SidePanelProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onZoomReset: () => void;
+
+  // Particle props
+  particleIsEnabled: boolean;
+  particleType: ParticleType;
+  particleIntensity: number;
+  particleSpeed: number;
+  onToggleParticles: () => void;
+  onParticleTypeChange: (type: ParticleType) => void;
+  onParticleIntensityChange: (intensity: number) => void;
+  onParticleSpeedChange: (speed: number) => void;
 }
 
 export function SidePanel({
@@ -77,6 +88,14 @@ export function SidePanel({
   onZoomIn,
   onZoomOut,
   onZoomReset,
+  particleIsEnabled,
+  particleType,
+  particleIntensity,
+  particleSpeed,
+  onToggleParticles,
+  onParticleTypeChange,
+  onParticleIntensityChange,
+  onParticleSpeedChange,
 }: SidePanelProps) {
   return (
     <div className="side-panel">
@@ -118,6 +137,19 @@ export function SidePanel({
           onResetFog={onResetFog}
           onClearAllFog={onClearAllFog}
           onDeleteSelectedDarknessArea={onDeleteSelectedDarknessArea}
+        />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Partículas Ambientales" defaultExpanded={false}>
+        <ParticleControls
+          isEnabled={particleIsEnabled}
+          particleType={particleType}
+          intensity={particleIntensity}
+          speed={particleSpeed}
+          onToggle={onToggleParticles}
+          onTypeChange={onParticleTypeChange}
+          onIntensityChange={onParticleIntensityChange}
+          onSpeedChange={onParticleSpeedChange}
         />
       </CollapsibleSection>
 

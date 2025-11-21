@@ -2,12 +2,14 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useGrid } from './hooks/useGrid';
 import { useEffects } from './hooks/useEffects';
 import { useFogOfWar } from './hooks/useFogOfWar';
+import { useParticleLayer } from './hooks/useParticleLayer';
 import { loadImageAsBase64 } from './utils/canvasUtils';
 import { pixelToGrid } from './utils/gridUtils';
 import { MapState, ImageBounds, ZoomState, EffectType } from './types';
 import MapCanvas from './components/MapCanvas';
 import ZoomControls from './components/ZoomControls';
 import EffectRenderer from './components/EffectRenderer';
+import ParticleLayer from './components/ParticleLayer';
 import MapLibrary from './components/MapLibrary';
 import { FullscreenLayout } from './components/FullscreenLayout';
 import './App.css';
@@ -74,6 +76,14 @@ function App() {
     resetAllFog,
     selectDarknessArea,
   } = useFogOfWar(initialState?.fogOfWar);
+
+  const {
+    particleState,
+    toggleParticles,
+    setParticleType,
+    setIntensity,
+    setSpeed,
+  } = useParticleLayer(initialState?.particleLayer);
 
   const [mapImage, setMapImage] = useState<string | null>(null); // Siempre arranca sin mapa
   const [imageBounds, setImageBounds] = useState<ImageBounds | null>(null);
@@ -280,13 +290,14 @@ function App() {
       selectedEffectId,
       zoom,
       fogOfWar: fogState,
+      particleLayer: particleState,
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (error) {
       console.error('Error saving to localStorage:', error);
     }
-  }, [mapImage, imageBounds, grid, effects, selectedEffectId, zoom, fogState, isInitialized]);
+  }, [mapImage, imageBounds, grid, effects, selectedEffectId, zoom, fogState, particleState, isInitialized]);
 
 
   // Memoizar los callbacks para evitar re-renders innecesarios
@@ -396,6 +407,14 @@ function App() {
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onZoomReset={handleZoomReset}
+        particleIsEnabled={particleState.isEnabled}
+        particleType={particleState.particleType}
+        particleIntensity={particleState.intensity}
+        particleSpeed={particleState.speed}
+        onToggleParticles={toggleParticles}
+        onParticleTypeChange={setParticleType}
+        onParticleIntensityChange={setIntensity}
+        onParticleSpeedChange={setSpeed}
       >
         {/* Canvas container */}
         {(() => {
@@ -439,6 +458,15 @@ function App() {
                   />
                 ))}
               </div>
+              {/* Renderizar capa de partículas */}
+              <ParticleLayer
+                isEnabled={particleState.isEnabled}
+                particleType={particleState.particleType}
+                intensity={particleState.intensity}
+                speed={particleState.speed}
+                canvasWidth={currentCanvasDimensions.width}
+                canvasHeight={currentCanvasDimensions.height}
+              />
             </div>
           );
         })()}

@@ -20,6 +20,7 @@ export interface MapState {
   selectedEffectId: string | null;
   zoom?: ZoomState; // Estado de zoom (opcional para compatibilidad)
   fogOfWar?: FogOfWarState; // Estado de niebla de guerra (opcional para compatibilidad)
+  particleLayer?: ParticleLayerState; // Estado de capa de partículas (opcional para compatibilidad)
 }
 
 export interface CanvasDimensions {
@@ -96,4 +97,14 @@ export interface FogOfWarState {
 }
 
 export type FogTool = 'darkness' | 'select' | null;
+
+// Particle Layer System
+export type ParticleType = 'sand' | 'leaves' | 'wind' | 'snow' | 'dust' | 'sparks' | 'greenLeaves' | null;
+
+export interface ParticleLayerState {
+  isEnabled: boolean;
+  particleType: ParticleType;
+  intensity: number; // 0-1, densidad de partículas
+  speed: number; // 0-1, velocidad de movimiento
+}
 

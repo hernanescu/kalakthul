@@ -8,9 +8,11 @@ Un visor de mapas interactivo moderno para Dungeons & Dragons y juegos de mesa d
 - **Librería de mapas organizada**: Carpetas personalizables con miniaturas automáticas
 - **Sistema de grilla inteligente**: Grilla que se ajusta automáticamente al mapa
 - **Efectos dinámicos avanzados**: 8 tipos de efectos visuales con formas personalizables
+- **Zonas de Oscuridad (Fog of War)**: Sistema completo para ocultar áreas del mapa con selección y eliminación individual
 - **Zoom y pan fluidos**: Navegación intuitiva con mouse y controles dedicados
-- **Modo presentación**: Pantalla completa para sesiones de juego inmersivas
-- **Interfaz moderna**: Header horizontal + sidebar colapsable
+- **Modo presentación mejorado**: Pantalla completa con panel lateral deslizante inteligente
+- **Interfaz moderna**: Header horizontal + panel lateral que aparece solo en pantalla completa
+- **Soporte para GIFs animados**: Carga y visualización de mapas animados (en desarrollo)
 - **Persistencia automática**: Estado guardado en localStorage
 - **Welcome screen**: Pantalla de inicio atractiva cuando no hay mapa cargado
 
@@ -30,6 +32,13 @@ Un visor de mapas interactivo moderno para Dungeons & Dragons y juegos de mesa d
 - Creación por drag & drop
 - Edición en tiempo real
 
+### 🌑 Sistema de Zonas de Oscuridad (Fog of War)
+- **Creación de zonas**: Dibuja polígonos personalizados para ocultar áreas del mapa
+- **Selección interactiva**: Click en zonas existentes para seleccionarlas (resaltado visual)
+- **Eliminación individual**: Elimina zonas específicas con un botón dedicado
+- **Múltiples zonas**: Crea y gestiona múltiples zonas de oscuridad independientes
+- **Modo edición**: Herramientas dedicadas para crear y gestionar zonas
+
 ## 🚀 Inicio Rápido
 
 ### Instalación
@@ -42,12 +51,14 @@ npm run dev
 ```
 
 ### Uso Básico
-1. **Cargar mapa**: Usa "📤 Cargar" en el header para subir imágenes
+1. **Cargar mapa**: Usa "📤 Cargar" en el header para subir imágenes (JPG, PNG, WEBP, GIF)
 2. **Organizar mapas**: Crea carpetas con "➕ Carpeta" para organizar tus mapas
 3. **Configurar grilla**: En "Grilla" ajusta filas, columnas, opacidad y color
 4. **Añadir efectos**: En "Efectos" selecciona un tipo y arrastra en el mapa
-5. **Navegar**: Rueda del mouse para zoom, Shift+click para pan
-6. **Presentación**: Click en "🖥️ Pantalla completa" para modo inmersivo
+5. **Zonas de oscuridad**: Activa "Zonas de Oscuridad", entra en modo edición y dibuja áreas para ocultar
+6. **Gestionar zonas**: Usa "Seleccionar Zonas" para clickear y eliminar zonas individuales
+7. **Navegar**: Rueda del mouse para zoom, Shift+click para pan
+8. **Presentación**: Click en "🖥️ Pantalla completa" - mueve el cursor al borde izquierdo para acceder a controles
 
 ## 🛠️ Tecnologías
 
@@ -71,11 +82,16 @@ src/
 │   ├── ReactEffects.tsx        # Efectos animados con Framer Motion
 │   ├── GridControls.tsx        # Controles de configuración de grilla
 │   ├── EffectControls.tsx      # Controles de efectos
+│   ├── FogControls.tsx         # Controles de zonas de oscuridad
 │   ├── ZoomControls.tsx        # Controles de zoom
+│   ├── SidePanel.tsx           # Panel lateral con todos los controles
+│   ├── FullscreenLayout.tsx    # Layout inteligente para pantalla completa
 │   └── CollapsibleSection.tsx   # Componente UI colapsable
 ├── hooks/              # Lógica reutilizable
 │   ├── useGrid.ts             # Estado y lógica de grilla
 │   ├── useEffects.ts          # Estado y lógica de efectos
+│   ├── useFogOfWar.ts         # Estado y lógica de zonas de oscuridad
+│   ├── useFullscreen.ts       # Detección de modo pantalla completa
 │   └── useMapLibrary.ts       # Gestión de librería de mapas
 ├── utils/              # Utilidades especializadas
 │   ├── canvasUtils.ts         # Operaciones básicas de canvas
@@ -148,11 +164,21 @@ npm run preview  # Vista previa del build de producción
 - **Librería de mapas** con carpetas y thumbnails
 - **Sistema de grilla** automático e inteligente
 - **8 efectos dinámicos** con formas personalizables
+- **Sistema de Zonas de Oscuridad (Fog of War)** completo con:
+  - Creación de polígonos personalizados
+  - Selección interactiva de zonas
+  - Eliminación individual de zonas
+  - Resaltado visual de zonas seleccionadas
 - **Zoom/pan fluido** con controles dedicados
-- **Modo presentación** con pantalla completa
-- **Interfaz moderna** con header + sidebar colapsable
-- **Sistema de ayuda** integrado
-- **Welcome screen** atractiva
+- **Modo presentación mejorado** con:
+  - Panel lateral deslizante inteligente
+  - Activación por hover en borde izquierdo
+  - Ocultamiento automático cuando no se usa
+  - Todos los controles accesibles en pantalla completa
+- **Interfaz moderna** con header horizontal + panel lateral contextual
+- **Soporte para GIFs animados** (carga y procesamiento)
+- **Sistema de ayuda** integrado y actualizado
+- **Welcome screen** atractiva y centrada
 - **Persistencia automática** de estado
 
 ### ⚠️ Limitaciones Conocidas
@@ -169,6 +195,9 @@ npm run preview  # Vista previa del build de producción
 6. Repetir para múltiples efectos
 
 **Estado:** Semi-productivo con flujo workaround documentado.
+
+#### Animación de GIFs
+**Estado:** Soporte básico implementado para carga de GIFs, pero la animación en canvas requiere trabajo adicional. Los GIFs se cargan correctamente pero la reproducción automática de animación está en desarrollo.
 
 ### 🎯 Próximos Pasos Prioritarios
 
@@ -189,18 +218,24 @@ npm run preview  # Vista previa del build de producción
 - Indicadores visuales de estado
 
 #### 4. Features Adicionales
+- Completar animación de GIFs en canvas
 - Exportar mapa con efectos aplicados
 - Temas de color personalizables
 - Efectos personalizados del usuario
 - Modo colaborativo básico
+- Mejoras en almacenamiento para mapas grandes (IndexedDB para GIFs)
 
 ## 📈 Métricas de Desarrollo
 
-- **Tiempo total**: ~12-14 horas de desarrollo activo
-- **Archivos modificados**: 20+ archivos principales
-- **Líneas de código**: ~2000+ líneas añadidas
-- **Iteraciones de debugging**: 15+ ciclos
-- **Problemas técnicos resueltos**: 8+ complejos
+- **Tiempo total**: ~18-20 horas de desarrollo activo
+- **Archivos modificados**: 30+ archivos principales
+- **Líneas de código**: ~3000+ líneas añadidas
+- **Iteraciones de debugging**: 20+ ciclos
+- **Problemas técnicos resueltos**: 12+ complejos
+- **Features principales añadidas**: 
+  - Sistema completo de Fog of War
+  - Refactorización de UI para pantalla completa
+  - Soporte para GIFs (en desarrollo)
 
 ## 🤝 Contribución
 

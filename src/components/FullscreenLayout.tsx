@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { SidePanel } from './SidePanel';
-import { GridConfig, EffectType, FogTool } from '../types';
+import { GridConfig, EffectType, FogTool, ParticleType } from '../types';
 import './FullscreenLayout.css';
 
 interface FullscreenLayoutProps {
@@ -44,6 +44,16 @@ interface FullscreenLayoutProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onZoomReset: () => void;
+
+  // Particle props
+  particleIsEnabled: boolean;
+  particleType: ParticleType;
+  particleIntensity: number;
+  particleSpeed: number;
+  onToggleParticles: () => void;
+  onParticleTypeChange: (type: ParticleType) => void;
+  onParticleIntensityChange: (intensity: number) => void;
+  onParticleSpeedChange: (speed: number) => void;
 }
 
 export function FullscreenLayout({
