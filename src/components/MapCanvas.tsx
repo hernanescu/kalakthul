@@ -1,6 +1,40 @@
 import { useRef, useEffect, useState } from 'react';
-import { GridConfig, ImageBounds, ZoomState, Effect } from '../types';
+import { GridConfig, ImageBounds, ZoomState, Effect, FogOfWarState, FogTool } from '../types';
 import { calculateGridDimensions, drawGrid } from '../utils/canvasRender';
+
+// Función helper para dibujar preview de polígono actual
+function drawPolygonPreview(ctx: CanvasRenderingContext2D, points: { x: number; y: number }[], isDarkness: boolean = false) {
+  if (points.length === 0) return;
+
+  ctx.save();
+  ctx.strokeStyle = isDarkness ? '#ff0000' : '#ffff00';
+  ctx.fillStyle = isDarkness ? 'rgba(255, 0, 0, 0.1)' : 'rgba(255, 255, 0, 0.1)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
+
+  ctx.beginPath();
+
+  // Dibujar líneas entre puntos existentes
+  if (points.length > 0) {
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i].x, points[i].y);
+    }
+  }
+
+  ctx.stroke();
+
+  // Dibujar puntos
+  ctx.setLineDash([]);
+  ctx.fillStyle = isDarkness ? '#ff0000' : '#ffff00';
+  points.forEach(point => {
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.restore();
+}
 
 
 interface MapCanvasProps {
@@ -17,6 +51,13 @@ interface MapCanvasProps {
   onImageBoundsChange?: (bounds: ImageBounds | null) => void;
   onZoomChange?: (zoom: ZoomState) => void;
   canvasDimensions: { width: number; height: number };
+  // Fog of War props
+  fogOfWar?: FogOfWarState;
+  fogEditMode?: boolean;
+  fogSelectedTool?: FogTool;
+  fogCurrentPolygon?: { x: number; y: number }[];
+  onFogPolygonPoint?: (x: number, y: number) => void;
+  onFogFinishPolygon?: () => void;
 }
 
 export default function MapCanvas({
@@ -33,6 +74,12 @@ export default function MapCanvas({
   onImageBoundsChange,
   onZoomChange,
   canvasDimensions,
+  fogOfWar,
+  fogEditMode = false,
+  fogSelectedTool = null,
+  fogCurrentPolygon = [],
+  onFogPolygonPoint,
+  onFogFinishPolygon,
 }: MapCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCacheRef = useRef<{ src: string | null; bounds: ImageBounds | null }>({ src: null, bounds: null });
@@ -223,9 +270,42 @@ export default function MapCanvas({
         drawGrid(ctx, grid, dimensions, boundsToUse);
       }
 
-          // No hay tokens que dibujar
+      // No hay tokens que dibujar
 
       ctx.restore();
+
+      // Dibujar zonas de oscuridad FUERA del contexto transformado (coordenadas de pantalla)
+      // Solo se dibujan si la funcionalidad está activada
+      if (fogOfWar?.isEnabled && fogOfWar.darknessAreas.length > 0) {
+        ctx.save();
+        // Restaurar transformación para dibujar en coordenadas de pantalla
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = '#000000';
+
+        fogOfWar.darknessAreas.forEach(polygon => {
+          ctx.beginPath();
+          if (polygon.points.length >= 3) {
+            // Convertir coordenadas del mundo a pantalla
+            const firstPoint = polygon.points[0];
+            const screenX = firstPoint.x * safeZoom.level + safeZoom.panX;
+            const screenY = firstPoint.y * safeZoom.level + safeZoom.panY;
+            ctx.moveTo(screenX, screenY);
+
+            for (let i = 1; i < polygon.points.length; i++) {
+              const point = polygon.points[i];
+              const px = point.x * safeZoom.level + safeZoom.panX;
+              const py = point.y * safeZoom.level + safeZoom.panY;
+              ctx.lineTo(px, py);
+            }
+
+            ctx.closePath();
+            ctx.fill();
+          }
+        });
+
+        ctx.restore();
+      }
 
       // Dibujar preview de efecto si se está creando (fuera del contexto transformado)
       if (isCreatingEffect && pendingEffectType && effectCreationStart.x !== 0 && effectCreationStart.y !== 0) {
@@ -233,7 +313,7 @@ export default function MapCanvas({
         const startScreenY = effectCreationStart.y * safeZoom.level + safeZoom.panY;
         const currentScreenX = (effectCreationCurrent.x || effectCreationStart.x) * safeZoom.level + safeZoom.panX;
         const currentScreenY = (effectCreationCurrent.y || effectCreationStart.y) * safeZoom.level + safeZoom.panY;
-        
+
         ctx.save();
         ctx.strokeStyle = '#ffff00';
         ctx.fillStyle = 'rgba(255, 255, 0, 0.1)';
@@ -249,10 +329,21 @@ export default function MapCanvas({
         ctx.restore();
       }
 
+      // Dibujar preview de polígono de niebla solo si estamos en modo edición activo
+      // y tenemos una herramienta seleccionada con puntos en el polígono actual
+      if (fogEditMode === true && fogSelectedTool && fogCurrentPolygon && fogCurrentPolygon.length > 0) {
+        const screenPoints = fogCurrentPolygon.map(point => ({
+          x: point.x * safeZoom.level + safeZoom.panX,
+          y: point.y * safeZoom.level + safeZoom.panY,
+        }));
+
+        drawPolygonPreview(ctx, screenPoints, fogSelectedTool === 'darkness');
+      }
+
     };
 
     render();
-  }, [mapImage, imageLoaded, imageBounds, grid, canvasDimensions, zoom, onImageBoundsChange, isCreatingEffect, effectCreationStart, effectCreationCurrent, pendingEffectType]);
+  }, [mapImage, imageLoaded, imageBounds, grid, canvasDimensions, zoom, onImageBoundsChange, isCreatingEffect, effectCreationStart, effectCreationCurrent, pendingEffectType, fogOfWar, fogEditMode, fogSelectedTool, fogCurrentPolygon]);
 
   // Convertir coordenadas del mouse a coordenadas del canvas con zoom
   // Coordenadas absolutas del canvas considerando zoom y pan
@@ -316,8 +407,8 @@ export default function MapCanvas({
 
     const canvasCoords = screenToCanvas(x, y);
 
-        // Buscar efecto primero
-        const clickedEffect = findEffectAtPosition(x, y);
+    // Buscar efecto primero (prioridad sobre niebla)
+    const clickedEffect = findEffectAtPosition(x, y);
 
         // Si hay un efecto pendiente para agregar
         if (pendingEffectType && onAddEffectAtPosition) {
@@ -326,7 +417,7 @@ export default function MapCanvas({
             if (onEffectClick) {
               onEffectClick(clickedEffect.id);
             }
-            setPendingEffectType(null);
+            // setPendingEffectType(null); // No tenemos acceso a esta función aquí
             // Continuar con la lógica normal de arrastre
             setIsDragging(true);
             setDragEffectId(clickedEffect.id);
@@ -355,6 +446,13 @@ export default function MapCanvas({
           if (onEffectClick) {
             onEffectClick(clickedEffect.id);
           }
+          return;
+        }
+
+        // Solo si NO hay efectos pendientes o clicados, verificar modo edición de niebla
+        if (fogEditMode && fogSelectedTool && onFogPolygonPoint) {
+          e.preventDefault();
+          onFogPolygonPoint(canvasCoords.x, canvasCoords.y);
           return;
         }
 
@@ -407,11 +505,19 @@ export default function MapCanvas({
       setEffectCreationStart({ x: 0, y: 0 });
       setEffectCreationCurrent({ x: 0, y: 0 });
     }
-    
+
         setIsDragging(false);
         setIsPanning(false);
         setDragEffectId(null);
         setDragOffset({ x: 0, y: 0 });
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Finalizar polígono de niebla con doble clic
+    if (fogEditMode && fogSelectedTool && onFogFinishPolygon) {
+      e.preventDefault();
+      onFogFinishPolygon();
+    }
   };
 
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
@@ -444,6 +550,14 @@ export default function MapCanvas({
     });
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLCanvasElement>) => {
+    // Finalizar polígono de niebla con Enter
+    if (fogEditMode && fogSelectedTool && e.key === 'Enter' && onFogFinishPolygon) {
+      e.preventDefault();
+      onFogFinishPolygon();
+    }
+  };
+
   return (
     <canvas
       ref={canvasRef}
@@ -453,10 +567,16 @@ export default function MapCanvas({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onDoubleClick={handleDoubleClick}
       onWheel={handleWheel}
+      onKeyDown={handleKeyDown}
       onContextMenu={(e) => e.preventDefault()}
+      tabIndex={0} // Para que reciba eventos de teclado
           style={{
-            cursor: isPanning ? 'grabbing' : (isDragging ? 'grabbing' : (hoveredEffectId || pendingEffectType ? 'crosshair' : 'default')),
+            cursor: isPanning ? 'grabbing' :
+                   (isDragging ? 'grabbing' :
+                   (fogEditMode && fogSelectedTool ? 'crosshair' :
+                   (hoveredEffectId || pendingEffectType ? 'crosshair' : 'default'))),
             display: 'block',
             maxWidth: '100%',
             maxHeight: '100%',

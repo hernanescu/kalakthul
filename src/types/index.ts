@@ -19,6 +19,7 @@ export interface MapState {
   effects: Effect[]; // Efectos animados en el mapa
   selectedEffectId: string | null;
   zoom?: ZoomState; // Estado de zoom (opcional para compatibilidad)
+  fogOfWar?: FogOfWarState; // Estado de niebla de guerra (opcional para compatibilidad)
 }
 
 export interface CanvasDimensions {
@@ -82,4 +83,17 @@ export interface MapLibrary {
   maps: MapEntry[];
   currentFolder: string;   // ID de la carpeta activa
 }
+
+// Fog of War System
+export interface Polygon {
+  id: string;
+  points: { x: number; y: number }[];
+}
+
+export interface FogOfWarState {
+  isEnabled: boolean;
+  darknessAreas: Polygon[]; // Áreas de oscuridad total (negras)
+}
+
+export type FogTool = 'darkness' | null;
 

@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useGrid } from './hooks/useGrid';
 import { useEffects } from './hooks/useEffects';
+import { useFogOfWar } from './hooks/useFogOfWar';
 import { loadImageAsBase64 } from './utils/canvasUtils';
-import { snapToGrid, pixelToGrid } from './utils/gridUtils';
+import { pixelToGrid } from './utils/gridUtils';
 import { MapState, ImageBounds, ZoomState, EffectType } from './types';
 import MapCanvas from './components/MapCanvas';
 import GridControls from './components/GridControls';
 import ZoomControls from './components/ZoomControls';
 import EffectControls from './components/EffectControls';
+import FogControls from './components/FogControls';
 import CollapsibleSection from './components/CollapsibleSection';
 import EffectRenderer from './components/EffectRenderer';
 import MapLibrary from './components/MapLibrary';
@@ -30,11 +32,11 @@ function App() {
       console.log('[App] Loading from localStorage:', saved ? 'Found data' : 'No data');
       if (saved) {
         const parsed = JSON.parse(saved) as MapState;
-        console.log('[App] Parsed state:', { 
-          hasMapImage: !!parsed.mapImage, 
+        console.log('[App] Parsed state:', {
+          hasMapImage: !!parsed.mapImage,
           hasImageBounds: !!parsed.imageBounds,
           hasZoom: !!parsed.zoom,
-          tokensCount: parsed.tokens?.length || 0
+          effectsCount: parsed.effects?.length || 0
         });
         setInitialState(parsed);
       }
@@ -54,10 +56,24 @@ function App() {
     deleteEffect,
     selectEffect,
     moveEffect,
-    resizeEffect,
     setEffectShape,
     setEffectOpacity,
   } = useEffects(initialState?.effects || []);
+
+  const {
+    fogState,
+    isEditMode,
+    selectedTool,
+    currentPolygon,
+    toggleFog,
+    enterEditMode,
+    exitEditMode,
+    selectTool,
+    addPolygonPoint,
+    finishPolygon,
+    resetFog,
+    resetAllFog,
+  } = useFogOfWar(initialState?.fogOfWar);
 
   const [mapImage, setMapImage] = useState<string | null>(null); // Siempre arranca sin mapa
   const [imageBounds, setImageBounds] = useState<ImageBounds | null>(null);
@@ -104,6 +120,8 @@ function App() {
     effects.forEach(effect => {
       deleteEffect(effect.id);
     });
+    // Limpiar niebla de guerra
+    resetAllFog();
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,9 +147,13 @@ function App() {
   const handleMapSelect = (mapEntry: any) => {
     setMapImage(mapEntry.compressedImage);
     setCurrentMapId(mapEntry.id);
-    // Reset zoom and effects when changing maps
+    // Reset zoom, effects and fog when changing maps
     setZoom({ level: 1, panX: 0, panY: 0 });
-    // Keep effects for now, but could reset them if preferred
+    // Reset effects and fog for clean slate on new map
+    effects.forEach(effect => {
+      deleteEffect(effect.id);
+    });
+    resetAllFog();
   };
 
 
@@ -267,13 +289,14 @@ function App() {
       effects,
       selectedEffectId,
       zoom,
+      fogOfWar: fogState,
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (error) {
       console.error('Error saving to localStorage:', error);
     }
-  }, [mapImage, imageBounds, grid, effects, selectedEffectId, zoom, isInitialized]);
+  }, [mapImage, imageBounds, grid, effects, selectedEffectId, zoom, fogState, isInitialized]);
 
 
   // Memoizar los callbacks para evitar re-renders innecesarios
@@ -352,6 +375,21 @@ function App() {
                       />
                     </CollapsibleSection>
 
+              <CollapsibleSection title="Zonas de Oscuridad" defaultExpanded={false}>
+                <FogControls
+                  isEnabled={fogState.isEnabled}
+                  isEditMode={isEditMode}
+                  selectedTool={selectedTool}
+                  darknessAreasCount={fogState.darknessAreas.length}
+                  onToggleFog={toggleFog}
+                  onEnterEditMode={enterEditMode}
+                  onExitEditMode={exitEditMode}
+                  onSelectTool={selectTool}
+                  onResetFog={resetFog}
+                  onClearAllFog={resetAllFog}
+                />
+              </CollapsibleSection>
+
               <CollapsibleSection title="Zoom" defaultExpanded={false}>
                 <ZoomControls
                   zoom={zoom}
@@ -377,6 +415,12 @@ function App() {
                 onImageBoundsChange={handleImageBoundsChange}
                 onZoomChange={handleZoomChange}
                 canvasDimensions={canvasDimensions}
+                fogOfWar={fogState}
+                fogEditMode={isEditMode}
+                fogSelectedTool={selectedTool}
+                fogCurrentPolygon={currentPolygon}
+                onFogPolygonPoint={addPolygonPoint}
+                onFogFinishPolygon={finishPolygon}
               />
               {/* Renderizar efectos sobre el canvas */}
               <div className="effects-layer">
@@ -430,6 +474,10 @@ function App() {
               onImageBoundsChange={handleImageBoundsChange}
               onZoomChange={handleZoomChange}
               canvasDimensions={{ width: window.innerWidth, height: window.innerHeight }}
+              fogOfWar={fogState}
+              fogEditMode={false} // En modo presentación no hay edición
+              fogSelectedTool={null}
+              fogCurrentPolygon={[]}
             />
             {/* Renderizar efectos sobre el canvas */}
             <div className="effects-layer">
