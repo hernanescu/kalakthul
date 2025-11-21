@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { GridConfig, ImageBounds, ZoomState, Effect, FogOfWarState, FogTool, Polygon } from '../types';
 import { calculateGridDimensions, drawGrid } from '../utils/canvasRender';
 
@@ -126,43 +126,118 @@ export default function MapCanvas({
   const imageRef = useRef<HTMLImageElement | null>(null);
   const lastMapImageRef = useRef<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const animationFrameRef = useRef<number | null>(null);
+  // Elemento img oculto para GIFs animados (necesario para que el navegador reproduzca la animación)
+  const gifImageRef = useRef<HTMLImageElement | null>(null);
+  
+  // Detectar si la imagen es un GIF
+  const isGif = mapImage && (mapImage.startsWith('data:image/gif') || mapImage.includes('image/gif'));
+  
+  // Debug: log cuando detectamos un GIF
+  useEffect(() => {
+    if (isGif) {
+      console.log('[MapCanvas] GIF detectado:', mapImage?.substring(0, 50));
+    }
+  }, [isGif, mapImage]);
 
   useEffect(() => {
     if (mapImage && mapImage !== lastMapImageRef.current) {
       setImageLoaded(false);
-      const img = new Image();
-      img.onload = () => {
-        imageRef.current = img;
-        setImageLoaded(true);
-      };
-      img.onerror = () => {
-        imageRef.current = null;
-        setImageLoaded(false);
-      };
-      img.src = mapImage;
+      
+      // Para GIFs, crear un elemento img en el DOM (visible pero mínimo) para que el navegador reproduzca la animación
+      // Los navegadores modernos pausan animaciones en elementos completamente ocultos
+      if (isGif) {
+        // Limpiar elemento anterior si existe
+        if (gifImageRef.current && gifImageRef.current.parentNode) {
+          gifImageRef.current.parentNode.removeChild(gifImageRef.current);
+        }
+        
+        // Crear nuevo elemento img - debe estar "visible" para que el navegador reproduzca la animación
+        // Los navegadores modernos pausan animaciones en elementos con display:none o visibility:hidden
+        const gifImg = document.createElement('img');
+        gifImg.style.position = 'fixed';
+        gifImg.style.left = '0';
+        gifImg.style.top = '0';
+        gifImg.style.width = '1px';
+        gifImg.style.height = '1px';
+        gifImg.style.opacity = '0.001'; // Mínima opacidad pero no 0
+        gifImg.style.pointerEvents = 'none';
+        gifImg.style.zIndex = '-9999';
+        gifImg.style.visibility = 'visible';
+        gifImg.style.display = 'block'; // Importante: debe ser block, no none
+        gifImg.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(gifImg);
+        
+        // Forzar el navegador a considerar el elemento como "activo"
+        // Algunos navegadores necesitan esto para reproducir animaciones
+        gifImg.offsetHeight; // Trigger reflow
+        
+        gifImg.onload = () => {
+          imageRef.current = gifImg;
+          gifImageRef.current = gifImg;
+          setImageLoaded(true);
+          console.log('[MapCanvas] GIF cargado y listo para animación');
+        };
+        gifImg.onerror = () => {
+          if (gifImg.parentNode) {
+            gifImg.parentNode.removeChild(gifImg);
+          }
+          imageRef.current = null;
+          gifImageRef.current = null;
+          setImageLoaded(false);
+        };
+        gifImg.src = mapImage;
+      } else {
+        // Para imágenes normales, usar Image object normal
+        const img = new Image();
+        img.onload = () => {
+          imageRef.current = img;
+          setImageLoaded(true);
+        };
+        img.onerror = () => {
+          imageRef.current = null;
+          setImageLoaded(false);
+        };
+        img.src = mapImage;
+      }
+      
       lastMapImageRef.current = mapImage;
     } else if (!mapImage) {
+      // Limpiar elemento GIF del DOM si existe
+      if (gifImageRef.current && gifImageRef.current.parentNode) {
+        gifImageRef.current.parentNode.removeChild(gifImageRef.current);
+        gifImageRef.current = null;
+      }
       imageRef.current = null;
       lastMapImageRef.current = null;
       setImageLoaded(false);
     }
-  }, [mapImage]);
+    
+    // Cleanup: remover elemento GIF del DOM al desmontar
+    return () => {
+      if (gifImageRef.current && gifImageRef.current.parentNode) {
+        gifImageRef.current.parentNode.removeChild(gifImageRef.current);
+        gifImageRef.current = null;
+      }
+    };
+  }, [mapImage, isGif]);
 
-  useEffect(() => {
+  // Ref para mantener referencia estable a la función de render
+  const renderRef = useRef<(() => void) | undefined>(undefined);
+  
+  // Función de render extraída para poder usarla en el loop de animación
+  const render = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) {
-      console.warn('[MapCanvas] Canvas ref is null');
       return;
     }
 
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) {
-      console.warn('[MapCanvas] Could not get 2d context');
       return;
     }
 
-
-    const render = () => {
+    const doRender = () => {
       // Limpiar canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -396,11 +471,58 @@ export default function MapCanvas({
 
         drawPolygonPreview(ctx, screenPoints, fogSelectedTool === 'darkness');
       }
-
     };
 
-    render();
+    doRender();
   }, [mapImage, imageLoaded, imageBounds, grid, canvasDimensions, zoom, onImageBoundsChange, isCreatingEffect, effectCreationStart, effectCreationCurrent, pendingEffectType, fogOfWar, fogEditMode, fogSelectedTool, fogCurrentPolygon, fogSelectedDarknessAreaId]);
+  
+  // Actualizar ref cuando render cambia
+  useEffect(() => {
+    renderRef.current = render;
+  }, [render]);
+
+  // Ejecutar render cuando cambian las dependencias (para imágenes estáticas)
+  useEffect(() => {
+    if (!isGif) {
+      render();
+    }
+  }, [render, isGif]);
+
+  // Loop de animación para GIFs
+  useEffect(() => {
+    if (isGif && imageLoaded && imageRef.current) {
+      console.log('[MapCanvas] Iniciando loop de animación para GIF');
+      let isRunning = true;
+      
+      const animate = () => {
+        if (!isRunning || !imageRef.current) {
+          return;
+        }
+        // Usar la referencia estable en lugar de la función directamente
+        if (renderRef.current) {
+          renderRef.current();
+        }
+        animationFrameRef.current = requestAnimationFrame(animate);
+      };
+      
+      animationFrameRef.current = requestAnimationFrame(animate);
+      
+      return () => {
+        console.log('[MapCanvas] Deteniendo loop de animación');
+        isRunning = false;
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
+      };
+    } else {
+      // Si no es GIF, cancelar cualquier loop activo
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    }
+  }, [isGif, imageLoaded]); // Solo dependencias esenciales, sin render
 
   // Convertir coordenadas del mouse a coordenadas del canvas con zoom
   // Coordenadas absolutas del canvas considerando zoom y pan

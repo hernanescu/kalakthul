@@ -119,9 +119,9 @@ function App() {
     if (!file) return;
 
     // Validar formato
-    const validFormats = ['image/jpeg', 'image/png', 'image/webp'];
+    const validFormats = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!validFormats.includes(file.type)) {
-      alert('Formato no soportado. Use JPG, PNG o WEBP.');
+      alert('Formato no soportado. Use JPG, PNG, WEBP o GIF.');
       return;
     }
 
@@ -326,7 +326,7 @@ function App() {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".jpg,.jpeg,.png,.webp"
+        accept=".jpg,.jpeg,.png,.webp,.gif"
         onChange={handleFileSelect}
         style={{ display: 'none' }}
       />

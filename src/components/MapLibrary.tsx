@@ -52,9 +52,9 @@ const MapLibrary: React.FC<MapLibraryProps> = ({ onMapSelect, currentMapId, onTo
     if (!file) return;
 
     // Validar tipo de archivo
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
     if (!validTypes.includes(file.type)) {
-      alert('Formato no soportado. Use JPG, PNG o WEBP.');
+      alert('Formato no soportado. Use JPG, PNG, WEBP o GIF.');
       return;
     }
 
@@ -222,7 +222,7 @@ const MapLibrary: React.FC<MapLibraryProps> = ({ onMapSelect, currentMapId, onTo
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/jpg,image/png,image/webp"
+        accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
         onChange={handleFileSelect}
         style={{ display: 'none' }}
       />

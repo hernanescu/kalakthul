@@ -146,6 +146,48 @@ export const calculateImageSize = (base64: string): number => {
  */
 export const processMapImage = async (file: File): Promise<MapEntry> => {
   try {
+    const isGif = file.type === 'image/gif';
+    
+    // Para GIFs, preservar el formato original sin convertir a JPEG
+    if (isGif) {
+      // Leer GIF directamente como base64 para preservar la animación
+      const gifBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Crear miniatura del GIF (primer frame)
+      const thumbnailCanvas = await createThumbnail(file, 200);
+      const thumbnailBase64 = canvasToBase64(thumbnailCanvas, 0.7);
+
+      // Obtener dimensiones del GIF
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = gifBase64;
+      });
+
+      return {
+        id: generateMapId(),
+        name: file.name.replace(/\.[^/.]+$/, ''), // quitar extensión
+        folderId: '', // se asignará después
+        thumbnail: thumbnailBase64,
+        compressedImage: gifBase64, // Preservar GIF original
+        originalSize: file.size,
+        compressedSize: file.size, // GIF no se comprime
+        dimensions: {
+          width: img.width,
+          height: img.height
+        },
+        uploadDate: new Date().toISOString(),
+        lastUsed: new Date().toISOString(),
+      };
+    }
+
+    // Para imágenes normales, usar el proceso de compresión
     // Crear imagen comprimida
     const compressedImg = await compressImage(file, 0.8);
     const compressedCanvas = document.createElement('canvas');

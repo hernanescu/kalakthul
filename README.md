@@ -241,6 +241,6 @@ Datos extraídos del consumo de Cursor, analizados por Gemini.
 
 ---
 
-**Dedicado a Anthalion, Baldewyne, Shakka, Solare y Skady** 🏰⚔️
+**Dedicado a Anthalion, Baldewyne, Shakka, Skady y Solare** 🏰⚔️
 
 *Construido con ❤️ para la comunidad de juegos de mesa*
