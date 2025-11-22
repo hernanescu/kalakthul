@@ -2,9 +2,10 @@ import GridControls from './GridControls';
 import EffectControls from './EffectControls';
 import FogControls from './FogControls';
 import ParticleControls from './ParticleControls';
+import TokenControls from './TokenControls';
 import ZoomControls from './ZoomControls';
 import CollapsibleSection from './CollapsibleSection';
-import { GridConfig, EffectType, FogTool, ParticleType } from '../types';
+import { GridConfig, EffectType, FogTool, ParticleType, TokenEntry } from '../types';
 import './SidePanel.css';
 
 interface SidePanelProps {
@@ -55,6 +56,17 @@ interface SidePanelProps {
   onParticleTypeChange: (type: ParticleType) => void;
   onParticleIntensityChange: (intensity: number) => void;
   onParticleSpeedChange: (speed: number) => void;
+
+  // Token props
+  selectedTokenId: string | null;
+  selectedTokenName?: string;
+  selectedTokenOpacity?: number;
+  tokensInLibrary: TokenEntry[];
+  onSelectToken: (tokenEntry: TokenEntry) => void;
+  onDeleteToken: () => void;
+  onDeleteAllTokens: () => void;
+  onTokenNameChange: (name: string) => void;
+  onTokenOpacityChange: (opacity: number) => void;
 }
 
 export function SidePanel({
@@ -96,6 +108,15 @@ export function SidePanel({
   onParticleTypeChange,
   onParticleIntensityChange,
   onParticleSpeedChange,
+  selectedTokenId,
+  selectedTokenName,
+  selectedTokenOpacity,
+  tokensInLibrary,
+  onSelectToken,
+  onDeleteToken,
+  onDeleteAllTokens,
+  onTokenNameChange,
+  onTokenOpacityChange,
 }: SidePanelProps) {
   return (
     <div className="side-panel">
@@ -150,6 +171,20 @@ export function SidePanel({
           onTypeChange={onParticleTypeChange}
           onIntensityChange={onParticleIntensityChange}
           onSpeedChange={onParticleSpeedChange}
+        />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Tokens" defaultExpanded={false}>
+        <TokenControls
+          selectedTokenId={selectedTokenId}
+          selectedTokenName={selectedTokenName}
+          selectedTokenOpacity={selectedTokenOpacity}
+          tokensInLibrary={tokensInLibrary}
+          onSelectToken={onSelectToken}
+          onDeleteToken={onDeleteToken}
+          onDeleteAllTokens={onDeleteAllTokens}
+          onTokenNameChange={onTokenNameChange}
+          onTokenOpacityChange={onTokenOpacityChange}
         />
       </CollapsibleSection>
 

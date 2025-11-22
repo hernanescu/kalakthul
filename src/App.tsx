@@ -3,14 +3,17 @@ import { useGrid } from './hooks/useGrid';
 import { useEffects } from './hooks/useEffects';
 import { useFogOfWar } from './hooks/useFogOfWar';
 import { useParticleLayer } from './hooks/useParticleLayer';
+import { useTokens } from './hooks/useTokens';
+import { useTokenLibrary } from './hooks/useTokenLibrary';
 import { loadImageAsBase64 } from './utils/canvasUtils';
 import { pixelToGrid } from './utils/gridUtils';
-import { MapState, ImageBounds, ZoomState, EffectType } from './types';
+import { MapState, ImageBounds, ZoomState, EffectType, TokenEntry } from './types';
 import MapCanvas from './components/MapCanvas';
-import ZoomControls from './components/ZoomControls';
 import EffectRenderer from './components/EffectRenderer';
+import TokenRenderer from './components/TokenRenderer';
 import ParticleLayer from './components/ParticleLayer';
 import MapLibrary from './components/MapLibrary';
+import TokenLibrary from './components/TokenLibrary';
 import { FullscreenLayout } from './components/FullscreenLayout';
 import './App.css';
 
@@ -85,12 +88,35 @@ function App() {
     setSpeed,
   } = useParticleLayer(initialState?.particleLayer);
 
+  const {
+    tokens,
+    selectedTokenId,
+    addToken,
+    deleteToken,
+    selectToken,
+    moveToken,
+    setTokenName,
+    setTokenOpacity,
+    deleteAllTokens,
+  } = useTokens(initialState?.tokens || []);
+
+  const {
+    library: tokenLibrary,
+    tokensInCurrentFolder,
+    getTokenById,
+    markTokenAsUsed,
+  } = useTokenLibrary();
+
   const [mapImage, setMapImage] = useState<string | null>(null); // Siempre arranca sin mapa
   const [imageBounds, setImageBounds] = useState<ImageBounds | null>(null);
   const [zoom, setZoom] = useState<ZoomState>({ level: 1, panX: 0, panY: 0 });
   const [pendingEffectType, setPendingEffectType] = useState<EffectType | null>(null);
+  const [pendingTokenEntryId, setPendingTokenEntryId] = useState<string | null>(null);
   const [currentMapId, setCurrentMapId] = useState<string | undefined>();
   const [defaultEffectShape, setDefaultEffectShape] = useState<'square' | 'circle'>('circle');
+  const [isDraggingToken, setIsDraggingToken] = useState(false);
+  const [draggingTokenId, setDraggingTokenId] = useState<string | null>(null);
+  const [dragTokenOffset, setDragTokenOffset] = useState({ x: 0, y: 0 });
 
 
   // La app siempre arranca limpia, sin estado guardado
@@ -223,6 +249,107 @@ function App() {
     });
   };
 
+  const handleSelectToken = (tokenEntry: TokenEntry) => {
+    setPendingTokenEntryId(tokenEntry.id);
+    markTokenAsUsed(tokenEntry.id);
+  };
+
+  const handleAddTokenAtPosition = (tokenEntryId: string, startX: number, startY: number, endX: number, endY: number) => {
+    const width = Math.abs(endX - startX);
+    const height = Math.abs(endY - startY);
+    const finalWidth = Math.max(20, width);
+    const finalHeight = Math.max(20, height);
+    const centerX = (startX + endX) / 2;
+    const centerY = (startY + endY) / 2;
+    const gridPos = pixelToGrid(centerX, centerY, imageBounds, grid);
+    const gridX = gridPos?.gridX ?? 0;
+    const gridY = gridPos?.gridY ?? 0;
+
+    addToken(tokenEntryId, centerX, centerY, finalWidth, finalHeight, gridX, gridY);
+    setPendingTokenEntryId(null);
+  };
+
+  const handleTokenClick = (tokenId: string | null) => {
+    selectToken(tokenId);
+  };
+
+  const handleTokenDrag = useCallback((tokenId: string, x: number, y: number) => {
+    const gridPos = pixelToGrid(x, y, imageBounds, grid);
+    const gridX = gridPos?.gridX ?? 0;
+    const gridY = gridPos?.gridY ?? 0;
+    moveToken(tokenId, x, y, gridX, gridY);
+  }, [imageBounds, grid, moveToken]);
+
+  const handleTokenDragStart = (tokenId: string, offsetX: number, offsetY: number) => {
+    selectToken(tokenId);
+    setIsDraggingToken(true);
+    setDraggingTokenId(tokenId);
+    setDragTokenOffset({ x: offsetX, y: offsetY });
+  };
+
+  // Manejar arrastre global de tokens
+  useEffect(() => {
+    if (!isDraggingToken || !draggingTokenId) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const canvas = document.querySelector('.canvas-container, .presentation-canvas-container');
+      if (!canvas) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      const canvasCoords = {
+        x: (x - zoom.panX) / zoom.level,
+        y: (y - zoom.panY) / zoom.level,
+      };
+      
+      handleTokenDrag(
+        draggingTokenId,
+        canvasCoords.x - dragTokenOffset.x,
+        canvasCoords.y - dragTokenOffset.y
+      );
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingToken(false);
+      setDraggingTokenId(null);
+      setDragTokenOffset({ x: 0, y: 0 });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingToken, draggingTokenId, dragTokenOffset, zoom, handleTokenDrag]);
+
+  const handleDeleteToken = () => {
+    if (selectedTokenId) {
+      deleteToken(selectedTokenId);
+    }
+  };
+
+  const handleDeleteAllTokens = () => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar TODOS los tokens?')) {
+      deleteAllTokens();
+    }
+  };
+
+  const handleTokenNameChange = (name: string) => {
+    if (selectedTokenId) {
+      setTokenName(selectedTokenId, name || undefined);
+    }
+  };
+
+  const handleTokenOpacityChange = (opacity: number) => {
+    if (selectedTokenId) {
+      setTokenOpacity(selectedTokenId, opacity);
+    }
+  };
+
   const handleEffectShapeChange = (shape: 'square' | 'circle') => {
     if (selectedEffectId) {
       setEffectShape(selectedEffectId, shape);
@@ -291,13 +418,15 @@ function App() {
       zoom,
       fogOfWar: fogState,
       particleLayer: particleState,
+      tokens,
+      selectedTokenId,
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (error) {
       console.error('Error saving to localStorage:', error);
     }
-  }, [mapImage, imageBounds, grid, effects, selectedEffectId, zoom, fogState, particleState, isInitialized]);
+  }, [mapImage, imageBounds, grid, effects, selectedEffectId, zoom, fogState, particleState, tokens, selectedTokenId, isInitialized]);
 
 
   // Memoizar los callbacks para evitar re-renders innecesarios
@@ -342,14 +471,17 @@ function App() {
         style={{ display: 'none' }}
       />
 
-      {/* Header con librería de mapas - solo visible en modo normal */}
+      {/* Header con librería de mapas y tokens - solo visible en modo normal */}
       {!isPresentationMode && (
-        <MapLibrary
-          onMapSelect={handleMapSelect}
-          currentMapId={currentMapId}
-          onTogglePresentation={togglePresentationMode}
-          onClearMap={handleClearMap}
-        />
+        <>
+          <MapLibrary
+            onMapSelect={handleMapSelect}
+            currentMapId={currentMapId}
+            onTogglePresentation={togglePresentationMode}
+            onClearMap={handleClearMap}
+          />
+          <TokenLibrary onTokenSelect={handleSelectToken} />
+        </>
       )}
 
       {/* Botón de salir en modo presentación */}
@@ -406,6 +538,15 @@ function App() {
         onParticleTypeChange={setParticleType}
         onParticleIntensityChange={setIntensity}
         onParticleSpeedChange={setSpeed}
+        selectedTokenId={selectedTokenId}
+        selectedTokenName={tokens.find(t => t.id === selectedTokenId)?.name}
+        selectedTokenOpacity={tokens.find(t => t.id === selectedTokenId)?.opacity}
+        tokensInLibrary={tokenLibrary.tokens}
+        onSelectToken={handleSelectToken}
+        onDeleteToken={handleDeleteToken}
+        onDeleteAllTokens={handleDeleteAllTokens}
+        onTokenNameChange={handleTokenNameChange}
+        onTokenOpacityChange={handleTokenOpacityChange}
       >
         {/* Canvas container */}
         {(() => {
@@ -419,10 +560,16 @@ function App() {
                 effects={effects}
                 selectedEffectId={selectedEffectId}
                 pendingEffectType={pendingEffectType}
+                tokens={tokens}
+                selectedTokenId={selectedTokenId}
+                pendingTokenEntryId={pendingTokenEntryId}
                 zoom={zoom}
                 onEffectClick={handleEffectClick}
                 onEffectDrag={handleEffectDrag}
                 onAddEffectAtPosition={handleAddEffectAtPosition}
+                onTokenClick={handleTokenClick}
+                onTokenDrag={handleTokenDrag}
+                onAddTokenAtPosition={handleAddTokenAtPosition}
                 onImageBoundsChange={handleImageBoundsChange}
                 onZoomChange={handleZoomChange}
                 canvasDimensions={currentCanvasDimensions}
@@ -435,6 +582,28 @@ function App() {
                 onFogFinishPolygon={finishPolygon}
                 onFogSelectDarknessArea={selectDarknessArea}
               />
+              {/* Renderizar tokens sobre el canvas */}
+              <div className="tokens-layer">
+                {tokens.map((token) => {
+                  const tokenEntry = getTokenById(token.tokenEntryId);
+                  if (!tokenEntry) return null;
+                  return (
+                    <TokenRenderer
+                      key={token.id}
+                      token={token}
+                      tokenImage={tokenEntry.image}
+                      imageBounds={imageBounds}
+                      canvasWidth={currentCanvasDimensions.width}
+                      canvasHeight={currentCanvasDimensions.height}
+                      zoom={zoom}
+                      isSelected={selectedTokenId === token.id}
+                      isPendingMode={!!pendingTokenEntryId}
+                      onTokenClick={handleTokenClick}
+                      onTokenDragStart={handleTokenDragStart}
+                    />
+                  );
+                })}
+              </div>
               {/* Renderizar efectos sobre el canvas */}
               <div className="effects-layer">
                 {effects.map((effect) => (

@@ -1,0 +1,26 @@
+.token-renderer {
+  pointer-events: auto;
+  z-index: 5; /* Entre el canvas (z-1) y los efectos (z-10) */
+  cursor: move;
+}
+
+.token-renderer.selected {
+  outline: 2px solid #4a9eff;
+  outline-offset: 2px;
+}
+
+.token-name-label {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1;
+}
+

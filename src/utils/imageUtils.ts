@@ -1,4 +1,4 @@
-import { MapEntry } from '../types';
+import { MapEntry, TokenEntry } from '../types';
 
 /**
  * Utilidades para procesamiento de imágenes en la librería de mapas
@@ -251,4 +251,61 @@ export const formatFileSize = (bytes: number): string => {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+/**
+ * Generar ID único para tokens
+ */
+export const generateTokenId = (): string => {
+  return `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+/**
+ * Procesar imagen de token para la librería
+ */
+export const processTokenImage = async (file: File): Promise<TokenEntry> => {
+  try {
+    // Crear miniatura pequeña (100x100px para tokens)
+    const thumbnailCanvas = await createThumbnail(file, 100);
+    
+    // Crear imagen comprimida (más pequeña que mapas, tokens suelen ser más pequeños)
+    const compressedImg = await compressImage(file, 0.9, 512, 512);
+    const compressedCanvas = document.createElement('canvas');
+    const compressedCtx = compressedCanvas.getContext('2d');
+
+    if (!compressedCtx) {
+      throw new Error('No se pudo obtener el contexto del canvas');
+    }
+
+    compressedCanvas.width = compressedImg.width;
+    compressedCanvas.height = compressedImg.height;
+    compressedCtx.drawImage(compressedImg, 0, 0);
+
+    // Convertir a base64
+    const compressedBase64 = canvasToBase64(compressedCanvas, 0.9);
+    const thumbnailBase64 = canvasToBase64(thumbnailCanvas, 0.8);
+
+    // Calcular tamaños
+    const originalSize = file.size;
+    const compressedSize = calculateImageSize(compressedBase64) * 1024; // bytes
+
+    return {
+      id: generateTokenId(),
+      name: file.name.replace(/\.[^/.]+$/, ''), // quitar extensión
+      folderId: '', // se asignará después
+      thumbnail: thumbnailBase64,
+      image: compressedBase64,
+      originalSize,
+      compressedSize,
+      dimensions: {
+        width: compressedImg.width,
+        height: compressedImg.height
+      },
+      uploadDate: new Date().toISOString(),
+      lastUsed: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('Error procesando token:', error);
+    throw error;
+  }
 };

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { SidePanel } from './SidePanel';
-import { GridConfig, EffectType, FogTool, ParticleType } from '../types';
+import { GridConfig, EffectType, FogTool, ParticleType, TokenEntry } from '../types';
 import './FullscreenLayout.css';
 
 interface FullscreenLayoutProps {
@@ -54,6 +54,17 @@ interface FullscreenLayoutProps {
   onParticleTypeChange: (type: ParticleType) => void;
   onParticleIntensityChange: (intensity: number) => void;
   onParticleSpeedChange: (speed: number) => void;
+
+  // Token props
+  selectedTokenId: string | null;
+  selectedTokenName?: string;
+  selectedTokenOpacity?: number;
+  tokensInLibrary: TokenEntry[];
+  onSelectToken: (tokenEntry: TokenEntry) => void;
+  onDeleteToken: () => void;
+  onDeleteAllTokens: () => void;
+  onTokenNameChange: (name: string) => void;
+  onTokenOpacityChange: (opacity: number) => void;
 }
 
 export function FullscreenLayout({

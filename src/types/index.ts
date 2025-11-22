@@ -21,6 +21,8 @@ export interface MapState {
   zoom?: ZoomState; // Estado de zoom (opcional para compatibilidad)
   fogOfWar?: FogOfWarState; // Estado de niebla de guerra (opcional para compatibilidad)
   particleLayer?: ParticleLayerState; // Estado de capa de partículas (opcional para compatibilidad)
+  tokens?: Token[]; // Tokens colocados en el mapa (opcional para compatibilidad)
+  selectedTokenId?: string | null; // Token seleccionado (opcional para compatibilidad)
 }
 
 export interface CanvasDimensions {
@@ -106,5 +108,46 @@ export interface ParticleLayerState {
   particleType: ParticleType;
   intensity: number; // 0-1, densidad de partículas
   speed: number; // 0-1, velocidad de movimiento
+}
+
+// Sistema de Tokens
+export interface TokenEntry {
+  id: string;
+  name: string;
+  folderId: string;
+  thumbnail: string;        // base64 miniatura pequeña (100x100px)
+  image: string;            // imagen base64 para uso
+  originalSize: number;     // tamaño original en bytes
+  compressedSize: number;   // tamaño comprimido en bytes
+  dimensions: { width: number; height: number }; // dimensiones originales
+  uploadDate: string;       // ISO string
+  lastUsed: string;         // ISO string
+}
+
+export interface TokenFolder {
+  id: string;
+  name: string;
+  color: string;           // color CSS para distinguir carpetas
+  createdAt: string;       // ISO string
+}
+
+export interface TokenLibrary {
+  version: string;         // para migraciones futuras
+  folders: TokenFolder[];
+  tokens: TokenEntry[];
+  currentFolder: string;    // ID de la carpeta activa
+}
+
+export interface Token {
+  id: string;
+  tokenEntryId: string;     // ID del TokenEntry en la librería
+  x: number;                // Posición X en píxeles del canvas (centro)
+  y: number;                // Posición Y en píxeles del canvas (centro)
+  gridX: number;            // Posición X en celdas de la grilla
+  gridY: number;            // Posición Y en celdas de la grilla
+  width: number;            // Ancho del token en píxeles
+  height: number;           // Alto del token en píxeles
+  name?: string;            // Nombre opcional del token
+  opacity: number;           // Opacidad del token (0-1)
 }
 

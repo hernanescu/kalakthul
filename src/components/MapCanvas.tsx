@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { GridConfig, ImageBounds, ZoomState, Effect, FogOfWarState, FogTool, Polygon } from '../types';
+import { GridConfig, ImageBounds, ZoomState, Effect, FogOfWarState, FogTool, Polygon, Token } from '../types';
 import { calculateGridDimensions, drawGrid } from '../utils/canvasRender';
 
 // Función helper para detectar si un punto está dentro de un polígono (ray casting algorithm)
@@ -69,10 +69,16 @@ interface MapCanvasProps {
   effects: Effect[];
   selectedEffectId: string | null;
   pendingEffectType: string | null; // Tipo de efecto que se va a agregar
+  tokens: Token[];
+  selectedTokenId: string | null;
+  pendingTokenEntryId: string | null; // ID del token entry que se va a agregar
   zoom: ZoomState;
   onEffectClick?: (effectId: string | null) => void;
   onEffectDrag?: (effectId: string, x: number, y: number) => void;
   onAddEffectAtPosition?: (type: string, startX: number, startY: number, endX: number, endY: number) => void;
+  onTokenClick?: (tokenId: string | null) => void;
+  onTokenDrag?: (tokenId: string, x: number, y: number) => void;
+  onAddTokenAtPosition?: (tokenEntryId: string, startX: number, startY: number, endX: number, endY: number) => void;
   onImageBoundsChange?: (bounds: ImageBounds | null) => void;
   onZoomChange?: (zoom: ZoomState) => void;
   canvasDimensions: { width: number; height: number };
@@ -94,10 +100,16 @@ export default function MapCanvas({
   effects,
   selectedEffectId,
   pendingEffectType,
+  tokens,
+  selectedTokenId,
+  pendingTokenEntryId,
   zoom,
   onEffectClick,
   onEffectDrag,
   onAddEffectAtPosition,
+  onTokenClick,
+  onTokenDrag,
+  onAddTokenAtPosition,
   onImageBoundsChange,
   onZoomChange,
   canvasDimensions,
@@ -114,6 +126,7 @@ export default function MapCanvas({
   const imageCacheRef = useRef<{ src: string | null; bounds: ImageBounds | null }>({ src: null, bounds: null });
   const [isDragging, setIsDragging] = useState(false);
   const [dragEffectId, setDragEffectId] = useState<string | null>(null);
+  const [dragTokenId, setDragTokenId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [hoveredEffectId, setHoveredEffectId] = useState<string | null>(null);
   const [isPanning, setIsPanning] = useState(false);
@@ -121,6 +134,9 @@ export default function MapCanvas({
   const [isCreatingEffect, setIsCreatingEffect] = useState(false);
   const [effectCreationStart, setEffectCreationStart] = useState({ x: 0, y: 0 });
   const [effectCreationCurrent, setEffectCreationCurrent] = useState({ x: 0, y: 0 });
+  const [isCreatingToken, setIsCreatingToken] = useState(false);
+  const [tokenCreationStart, setTokenCreationStart] = useState({ x: 0, y: 0 });
+  const [tokenCreationCurrent, setTokenCreationCurrent] = useState({ x: 0, y: 0 });
 
   // Cachear la imagen cargada
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -568,6 +584,28 @@ export default function MapCanvas({
     return found;
   };
 
+  const findTokenAtPosition = (x: number, y: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+
+    // Coordenadas absolutas del canvas considerando zoom y pan
+    const canvasCoords = {
+      x: (x - zoom.panX) / zoom.level,
+      y: (y - zoom.panY) / zoom.level,
+    };
+    // Los tokens son rectangulares
+    const found = tokens.find((token) => {
+      const isInside = (
+        canvasCoords.x >= token.x - token.width / 2 &&
+        canvasCoords.x <= token.x + token.width / 2 &&
+        canvasCoords.y >= token.y - token.height / 2 &&
+        canvasCoords.y <= token.y + token.height / 2
+      );
+      return isInside;
+    });
+    return found;
+  };
+
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -586,8 +624,47 @@ export default function MapCanvas({
 
     const canvasCoords = screenToCanvas(x, y);
 
-    // Buscar efecto primero (prioridad sobre niebla)
+    // Buscar token primero (prioridad sobre efectos y niebla)
+    const clickedToken = findTokenAtPosition(x, y);
+    // Buscar efecto después
     const clickedEffect = findEffectAtPosition(x, y);
+
+    // Si hay un token pendiente para agregar
+    if (pendingTokenEntryId && onAddTokenAtPosition) {
+      if (clickedToken) {
+        // Si se hace clic en un token existente, cancelar creación y seleccionarlo
+        if (onTokenClick) {
+          onTokenClick(clickedToken.id);
+        }
+        setIsDragging(true);
+        setDragTokenId(clickedToken.id);
+        setDragOffset({
+          x: canvasCoords.x - clickedToken.x,
+          y: canvasCoords.y - clickedToken.y,
+        });
+        return;
+      } else {
+        // Si no hay token, iniciar creación
+        setIsCreatingToken(true);
+        setTokenCreationStart(canvasCoords);
+        setTokenCreationCurrent(canvasCoords);
+        return;
+      }
+    }
+
+    // Si se hace clic en un token (sin modo pendiente)
+    if (clickedToken) {
+      setIsDragging(true);
+      setDragTokenId(clickedToken.id);
+      setDragOffset({
+        x: canvasCoords.x - clickedToken.x,
+        y: canvasCoords.y - clickedToken.y,
+      });
+      if (onTokenClick) {
+        onTokenClick(clickedToken.id);
+      }
+      return;
+    }
 
         // Si hay un efecto pendiente para agregar
         if (pendingEffectType && onAddEffectAtPosition) {
@@ -690,10 +767,19 @@ export default function MapCanvas({
         panY: y - panStart.y,
       };
       onZoomChange(newZoom);
+    } else if (isCreatingToken && pendingTokenEntryId) {
+      const canvasCoords = screenToCanvas(x, y);
+      setTokenCreationCurrent(canvasCoords);
+      // Forzar re-render para mostrar preview
     } else if (isCreatingEffect && pendingEffectType) {
       const canvasCoords = screenToCanvas(x, y);
       setEffectCreationCurrent(canvasCoords);
       // Forzar re-render para mostrar preview
+    } else if (isDragging && dragTokenId) {
+      const canvasCoords = screenToCanvas(x, y);
+      if (onTokenDrag) {
+        onTokenDrag(dragTokenId, canvasCoords.x - dragOffset.x, canvasCoords.y - dragOffset.y);
+      }
     } else if (isDragging && dragEffectId) {
       const canvasCoords = screenToCanvas(x, y);
       if (onEffectDrag) {
@@ -707,7 +793,19 @@ export default function MapCanvas({
   };
 
   const handleMouseUp = (e?: React.MouseEvent<HTMLCanvasElement>) => {
-    if (isCreatingEffect && pendingEffectType && onAddEffectAtPosition) {
+    if (isCreatingToken && pendingTokenEntryId && onAddTokenAtPosition) {
+      // Usar las coordenadas actuales guardadas
+      onAddTokenAtPosition(
+        pendingTokenEntryId,
+        tokenCreationStart.x,
+        tokenCreationStart.y,
+        tokenCreationCurrent.x,
+        tokenCreationCurrent.y
+      );
+      setIsCreatingToken(false);
+      setTokenCreationStart({ x: 0, y: 0 });
+      setTokenCreationCurrent({ x: 0, y: 0 });
+    } else if (isCreatingEffect && pendingEffectType && onAddEffectAtPosition) {
       // Usar las coordenadas actuales guardadas
       onAddEffectAtPosition(
         pendingEffectType,
@@ -724,6 +822,7 @@ export default function MapCanvas({
         setIsDragging(false);
         setIsPanning(false);
         setDragEffectId(null);
+        setDragTokenId(null);
         setDragOffset({ x: 0, y: 0 });
   };
 
@@ -791,7 +890,7 @@ export default function MapCanvas({
             cursor: isPanning ? 'grabbing' :
                    (isDragging ? 'grabbing' :
                    (fogEditMode && fogSelectedTool ? 'crosshair' :
-                   (hoveredEffectId || pendingEffectType ? 'crosshair' : 'default'))),
+                   (hoveredEffectId || pendingEffectType || pendingTokenEntryId ? 'crosshair' : 'default'))),
             display: 'block',
             maxWidth: '100%',
             maxHeight: '100%',

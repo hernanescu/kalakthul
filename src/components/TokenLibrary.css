@@ -1,0 +1,235 @@
+.token-library-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background-color: #2a2a2a;
+  border-bottom: 1px solid #444;
+  flex-wrap: wrap;
+}
+
+.token-library-title h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: #e0e0e0;
+  white-space: nowrap;
+}
+
+.token-library-loading {
+  padding: 0.5rem 1rem;
+  color: #b0b0b0;
+  font-size: 0.9rem;
+}
+
+.folder-selector {
+  position: relative;
+}
+
+.folder-selector-btn {
+  padding: 0.5rem 0.75rem;
+  background-color: #4a4a4a;
+  border: 1px solid #666;
+  border-radius: 4px;
+  color: #e0e0e0;
+  cursor: pointer;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.folder-selector-btn:hover {
+  background-color: #5a5a5a;
+}
+
+.folder-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  background-color: #3a3a3a;
+  border: 1px solid #555;
+  border-radius: 4px;
+  min-width: 200px;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.folder-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: none;
+  color: #e0e0e0;
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.folder-option:hover {
+  background-color: #4a4a4a;
+}
+
+.folder-option.active {
+  background-color: #5a5a5a;
+  border-left: 3px solid var(--folder-color, #3B82F6);
+}
+
+.token-count {
+  font-size: 0.8rem;
+  color: #b0b0b0;
+}
+
+.action-btn {
+  padding: 0.5rem 0.75rem;
+  background-color: #4a4a4a;
+  border: 1px solid #666;
+  border-radius: 4px;
+  color: #e0e0e0;
+  cursor: pointer;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  transition: background-color 0.2s;
+}
+
+.action-btn:hover:not(:disabled) {
+  background-color: #5a5a5a;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn.danger {
+  background-color: #4a2a2a;
+  border-color: #6a3a3a;
+}
+
+.action-btn.danger:hover:not(:disabled) {
+  background-color: #5a3a3a;
+}
+
+.storage-stats {
+  font-size: 0.8rem;
+  color: #b0b0b0;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.dialog {
+  background: #2a2a2a;
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 1.5rem;
+  min-width: 300px;
+  max-width: 90vw;
+}
+
+.dialog h3 {
+  margin: 0 0 1rem 0;
+  color: #e0e0e0;
+  font-size: 1.1rem;
+}
+
+.dialog input {
+  width: 100%;
+  padding: 0.5rem;
+  background: #3a3a3a;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+
+.dialog-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.dialog-buttons button {
+  padding: 0.5rem 1rem;
+  background: #4a4a4a;
+  border: 1px solid #666;
+  border-radius: 4px;
+  color: #e0e0e0;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.dialog-buttons button:hover {
+  background: #5a5a5a;
+}
+
+.token-selector-dialog {
+  background: #2a2a2a;
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 1.5rem;
+  min-width: 500px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.token-selector-dialog h3 {
+  margin: 0 0 1rem 0;
+  color: #e0e0e0;
+  font-size: 1.1rem;
+}
+
+.token-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.token-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem;
+  background: #3a3a3a;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.token-item:hover {
+  background: #4a4a4a;
+  border-color: #666;
+}
+
+.token-item img {
+  width: 100%;
+  height: 100px;
+  object-fit: contain;
+  margin-bottom: 0.5rem;
+}
+
+.token-item-name {
+  font-size: 0.8rem;
+  color: #e0e0e0;
+  text-align: center;
+  word-break: break-word;
+}
+
