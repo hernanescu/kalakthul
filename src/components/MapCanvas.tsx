@@ -752,7 +752,7 @@ export default function MapCanvas({
 
     // Calcular nuevo nivel de zoom
     const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    const newZoomLevel = Math.max(0.25, Math.min(4, zoom.level * zoomFactor));
+    const newZoomLevel = Math.max(0.25, Math.min(8, zoom.level * zoomFactor));
 
     // Ajustar pan para mantener el punto del mouse en la misma posición
     const newPanX = mouseX - pointX * newZoomLevel;

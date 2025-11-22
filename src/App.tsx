@@ -312,7 +312,7 @@ function App() {
   const handleZoomIn = useCallback(() => {
     setZoom((prev) => ({
       ...prev,
-      level: Math.min(4, prev.level * 1.2),
+      level: Math.min(8, prev.level * 1.2),
     }));
   }, []);
 
@@ -352,24 +352,15 @@ function App() {
         />
       )}
 
-      {/* Controles de zoom compactos en modo presentación */}
+      {/* Botón de salir en modo presentación */}
       {isPresentationMode && (
-        <>
-          <ZoomControls
-            zoom={zoom}
-            onZoomIn={handleZoomIn}
-            onZoomOut={handleZoomOut}
-            onZoomReset={handleZoomReset}
-            compact={true}
-          />
-          <button
-            onClick={togglePresentationMode}
-            className="exit-presentation-btn"
-            title="Salir del modo presentación (Esc)"
-          >
-            ✕
-          </button>
-        </>
+        <button
+          onClick={togglePresentationMode}
+          className="exit-presentation-btn"
+          title="Salir del modo presentación (Esc)"
+        >
+          ✕
+        </button>
       )}
 
       <FullscreenLayout
