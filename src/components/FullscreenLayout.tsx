@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { SidePanel } from './SidePanel';
 import { GridConfig, EffectType, FogTool, ParticleType, TokenEntry } from '../types';
@@ -73,6 +73,14 @@ export function FullscreenLayout({
 }: FullscreenLayoutProps) {
   const isFullscreen = useFullscreen();
   const [isPanelVisible, setPanelVisible] = useState(false);
+  const [collapseKey, setCollapseKey] = useState(0);
+
+  // Cuando el panel se oculta, incrementar collapseKey para colapsar todas las secciones
+  useEffect(() => {
+    if (!isPanelVisible) {
+      setCollapseKey(prev => prev + 1);
+    }
+  }, [isPanelVisible]);
 
   if (!isFullscreen) {
     // En modo normal, mostrar solo el contenido sin panel lateral
@@ -94,7 +102,7 @@ export function FullscreenLayout({
         className={`fullscreen-panel ${isPanelVisible ? 'visible' : ''}`}
         onMouseLeave={() => setPanelVisible(false)}
       >
-        <SidePanel {...sidePanelProps} />
+        <SidePanel {...sidePanelProps} collapseKey={collapseKey} />
       </div>
       <main className="fullscreen-content">{children}</main>
     </div>

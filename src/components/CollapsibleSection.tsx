@@ -1,18 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './CollapsibleSection.css';
 
 interface CollapsibleSectionProps {
   title: string;
   children: React.ReactNode;
   defaultExpanded?: boolean;
+  collapseKey?: number; // Cuando cambia, colapsa la sección
 }
 
 export default function CollapsibleSection({
   title,
   children,
-  defaultExpanded = true
+  defaultExpanded = true,
+  collapseKey
 }: CollapsibleSectionProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+  // Colapsar cuando cambia collapseKey
+  useEffect(() => {
+    if (collapseKey !== undefined) {
+      setIsExpanded(false);
+    }
+  }, [collapseKey]);
 
   return (
     <div className="collapsible-section">

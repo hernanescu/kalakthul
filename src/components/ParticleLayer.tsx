@@ -34,11 +34,11 @@ const PARTICLE_CONFIGS: Record<NonNullable<ParticleType>, {
 }> = {
   sand: {
     colors: ['#d4a574', '#c19a6b', '#b8956a', '#a0825d'],
-    sizeRange: [1, 3],
+    sizeRange: [2, 5],
     speedRange: [0.5, 2],
     gravity: 0.1,
     wind: 0.3,
-    opacityRange: [0.4, 0.8],
+    opacityRange: [0.7, 1],
   },
   leaves: {
     colors: ['#8b4513', '#a0522d', '#cd853f', '#daa520', '#b8860b'],
@@ -50,11 +50,11 @@ const PARTICLE_CONFIGS: Record<NonNullable<ParticleType>, {
   },
   wind: {
     colors: ['#e0e0e0', '#d0d0d0', '#c0c0c0', '#b0b0b0'],
-    sizeRange: [1, 2],
+    sizeRange: [2, 4],
     speedRange: [1, 3],
     gravity: 0,
     wind: 1,
-    opacityRange: [0.3, 0.6],
+    opacityRange: [0.65, 0.95],
   },
   snow: {
     colors: ['#ffffff', '#f8f8f8', '#f0f0f0'],
@@ -66,11 +66,11 @@ const PARTICLE_CONFIGS: Record<NonNullable<ParticleType>, {
   },
   dust: {
     colors: ['#888888', '#777777', '#666666', '#555555'],
-    sizeRange: [1, 2],
+    sizeRange: [2, 4],
     speedRange: [0.2, 1],
     gravity: 0.02,
     wind: 0.4,
-    opacityRange: [0.3, 0.7],
+    opacityRange: [0.65, 0.95],
   },
   sparks: {
     colors: ['#ffd700', '#ffed4e', '#ffaa00', '#ff6b00', '#ffeb3b'],
@@ -111,7 +111,9 @@ export default function ParticleLayer({
     }
 
     const config = PARTICLE_CONFIGS[particleType];
-    const maxParticles = Math.floor(50 + intensity * 150); // Entre 50 y 200 partículas
+    // Aumentar intensidad base para arena, viento y polvo
+    const baseParticles = (particleType === 'sand' || particleType === 'wind' || particleType === 'dust') ? 200 : 50;
+    const maxParticles = Math.floor(baseParticles + intensity * 200); // Entre 200-400 para arena/viento/polvo, 50-250 para otros
     const particles: Particle[] = [];
 
     for (let i = 0; i < maxParticles; i++) {
@@ -160,13 +162,21 @@ export default function ParticleLayer({
     if (!ctx) return;
 
     const config = PARTICLE_CONFIGS[particleType];
+    const currentSpeed = speed; // Capturar el valor de speed
 
     const animate = (currentTime: number) => {
       if (!canvas || !ctx) return;
 
+      // Inicializar lastTime si es la primera vez
+      if (lastTimeRef.current === 0) {
+        lastTimeRef.current = currentTime;
+      }
+
       const deltaTime = currentTime - lastTimeRef.current;
       lastTimeRef.current = currentTime;
-      const delta = Math.min(deltaTime / 16, 2); // Normalizar a ~60fps
+      
+      // Limitar deltaTime para evitar saltos grandes (p. ej., cuando la pestaña vuelve a estar activa)
+      const delta = Math.min(deltaTime / 16.67, 2); // Normalizar a ~60fps, máximo 2x
 
       // Limpiar canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -176,34 +186,62 @@ export default function ParticleLayer({
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
 
+        // Aplicar gravedad y viento según el tipo (con límites para evitar aceleración infinita)
+        if (config.gravity !== 0) {
+          p.vy += config.gravity * delta * 0.1;
+          // Limitar velocidad vertical máxima
+          const maxVy = config.speedRange[1] * 3;
+          p.vy = Math.max(-maxVy, Math.min(maxVy, p.vy));
+        }
+        if (config.wind > 0) {
+          // Aplicar viento de forma más suave, sin acumulación excesiva
+          const windForce = (Math.random() - 0.5) * config.wind * 0.05 * delta;
+          p.vx += windForce;
+          // Limitar velocidad horizontal máxima
+          const maxVx = config.speedRange[1] * 3;
+          p.vx = Math.max(-maxVx, Math.min(maxVx, p.vx));
+        }
+
         // Actualizar posición
         p.x += p.vx * delta;
         p.y += p.vy * delta;
         p.rotation += p.rotationSpeed * delta;
 
-        // Aplicar gravedad y viento según el tipo
-        if (config.gravity !== 0) {
-          p.vy += config.gravity * delta * 0.1;
-        }
-        if (config.wind > 0) {
-          p.vx += (Math.random() - 0.5) * config.wind * 0.1 * delta;
-        }
-
-        // Regenerar partícula si sale de la pantalla
+        // Regenerar partícula si sale de la pantalla y resetear velocidad
         if (p.x < -10) {
           p.x = canvas.width + 10;
           p.y = Math.random() * canvas.height;
+          // Resetear velocidad al regenerar
+          const baseSpeed = config.speedRange[0] + Math.random() * (config.speedRange[1] - config.speedRange[0]);
+          const actualSpeed = baseSpeed * (0.5 + currentSpeed * 0.5);
+          p.vx = (config.wind * actualSpeed) + (Math.random() - 0.5) * 0.5;
+          p.vy = (config.gravity * actualSpeed) + (Math.random() - 0.5) * 0.3;
         } else if (p.x > canvas.width + 10) {
           p.x = -10;
           p.y = Math.random() * canvas.height;
+          // Resetear velocidad al regenerar
+          const baseSpeed = config.speedRange[0] + Math.random() * (config.speedRange[1] - config.speedRange[0]);
+          const actualSpeed = baseSpeed * (0.5 + currentSpeed * 0.5);
+          p.vx = (config.wind * actualSpeed) + (Math.random() - 0.5) * 0.5;
+          p.vy = (config.gravity * actualSpeed) + (Math.random() - 0.5) * 0.3;
         }
 
         if (p.y < -10) {
           p.y = canvas.height + 10;
           p.x = Math.random() * canvas.width;
+          // Resetear velocidad al regenerar
+          const baseSpeed = config.speedRange[0] + Math.random() * (config.speedRange[1] - config.speedRange[0]);
+          const actualSpeed = baseSpeed * (0.5 + currentSpeed * 0.5);
+          p.vx = (config.wind * actualSpeed) + (Math.random() - 0.5) * 0.5;
+          p.vy = (config.gravity * actualSpeed) + (Math.random() - 0.5) * 0.3;
         } else if (p.y > canvas.height + 10) {
           p.y = -10;
           p.x = Math.random() * canvas.width;
+          // Resetear velocidad al regenerar
+          const baseSpeed = config.speedRange[0] + Math.random() * (config.speedRange[1] - config.speedRange[0]);
+          const actualSpeed = baseSpeed * (0.5 + currentSpeed * 0.5);
+          p.vx = (config.wind * actualSpeed) + (Math.random() - 0.5) * 0.5;
+          p.vy = (config.gravity * actualSpeed) + (Math.random() - 0.5) * 0.3;
         }
 
         // Dibujar partícula
@@ -266,7 +304,7 @@ export default function ParticleLayer({
         animationFrameRef.current = null;
       }
     };
-  }, [isEnabled, particleType, canvasWidth, canvasHeight]);
+  }, [isEnabled, particleType, speed, canvasWidth, canvasHeight]);
 
   if (!isEnabled || !particleType) {
     return null;

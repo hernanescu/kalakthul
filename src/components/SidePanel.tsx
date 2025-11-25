@@ -67,6 +67,9 @@ interface SidePanelProps {
   onDeleteAllTokens: () => void;
   onTokenNameChange: (name: string) => void;
   onTokenOpacityChange: (opacity: number) => void;
+
+  // Prop para colapsar todas las secciones
+  collapseKey?: number;
 }
 
 export function SidePanel({
@@ -117,10 +120,11 @@ export function SidePanel({
   onDeleteAllTokens,
   onTokenNameChange,
   onTokenOpacityChange,
+  collapseKey,
 }: SidePanelProps) {
   return (
     <div className="side-panel">
-      <CollapsibleSection title="Grilla" defaultExpanded={false}>
+      <CollapsibleSection title="Grilla" defaultExpanded={false} collapseKey={collapseKey}>
         <GridControls
           grid={grid}
           onRowsChange={onRowsChange}
@@ -131,7 +135,7 @@ export function SidePanel({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Efectos" defaultExpanded={false}>
+      <CollapsibleSection title="Efectos" defaultExpanded={false} collapseKey={collapseKey}>
         <EffectControls
           selectedEffectType={selectedEffectType}
           selectedShape={selectedShape}
@@ -144,7 +148,7 @@ export function SidePanel({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Zonas de Oscuridad" defaultExpanded={false}>
+      <CollapsibleSection title="Zonas de Oscuridad" defaultExpanded={false} collapseKey={collapseKey}>
         <FogControls
           isEnabled={fogIsEnabled}
           isEditMode={fogIsEditMode}
@@ -161,7 +165,7 @@ export function SidePanel({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Partículas Ambientales" defaultExpanded={false}>
+      <CollapsibleSection title="Partículas Ambientales" defaultExpanded={false} collapseKey={collapseKey}>
         <ParticleControls
           isEnabled={particleIsEnabled}
           particleType={particleType}
@@ -174,7 +178,7 @@ export function SidePanel({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Tokens" defaultExpanded={false}>
+      <CollapsibleSection title="Tokens" defaultExpanded={false} collapseKey={collapseKey}>
         <TokenControls
           selectedTokenId={selectedTokenId}
           selectedTokenName={selectedTokenName}
@@ -188,7 +192,7 @@ export function SidePanel({
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Zoom" defaultExpanded={false}>
+      <CollapsibleSection title="Zoom" defaultExpanded={false} collapseKey={collapseKey}>
         <ZoomControls
           zoom={zoom}
           onZoomIn={onZoomIn}

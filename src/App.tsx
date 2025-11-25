@@ -12,8 +12,7 @@ import MapCanvas from './components/MapCanvas';
 import EffectRenderer from './components/EffectRenderer';
 import TokenRenderer from './components/TokenRenderer';
 import ParticleLayer from './components/ParticleLayer';
-import MapLibrary from './components/MapLibrary';
-import TokenLibrary from './components/TokenLibrary';
+import Header from './components/Header';
 import { FullscreenLayout } from './components/FullscreenLayout';
 import './App.css';
 
@@ -102,7 +101,6 @@ function App() {
 
   const {
     library: tokenLibrary,
-    tokensInCurrentFolder,
     getTokenById,
     markTokenAsUsed,
   } = useTokenLibrary();
@@ -471,17 +469,19 @@ function App() {
         style={{ display: 'none' }}
       />
 
-      {/* Header con librería de mapas y tokens - solo visible en modo normal */}
+      {/* Header unificado con menús desplegables - solo visible en modo normal */}
       {!isPresentationMode && (
-        <>
-          <MapLibrary
-            onMapSelect={handleMapSelect}
-            currentMapId={currentMapId}
-            onTogglePresentation={togglePresentationMode}
-            onClearMap={handleClearMap}
-          />
-          <TokenLibrary onTokenSelect={handleSelectToken} />
-        </>
+        <Header
+          onMapSelect={handleMapSelect}
+          onTokenSelect={handleSelectToken}
+          currentMapId={currentMapId}
+          onTogglePresentation={togglePresentationMode}
+          onClearMap={handleClearMap}
+          onClearAll={() => {
+            handleClearMap();
+            deleteAllTokens();
+          }}
+        />
       )}
 
       {/* Botón de salir en modo presentación */}
