@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TokenLibrary, TokenEntry, TokenFolder } from '../types';
-import { processTokenImage, generateFolderId, getRandomFolderColor } from '../utils/imageUtils';
-import { tokenDB, tokenFolderDB, migrateFromLocalStorage } from '../utils/indexedDB';
+import { generateFolderId, getRandomFolderColor } from '../utils/imageUtils';
+import { assetsApi } from '../api/assets';
+import { Asset } from '../api/assets';
 
 const LIBRARY_VERSION = '1.0.0';
 const CURRENT_FOLDER_KEY = 'kalakthul-current-token-folder';
+const FOLDERS_KEY = 'kalakthul-token-folders';
 
 /**
- * Hook para manejar la librería de tokens usando IndexedDB
+ * Hook para manejar la librería de tokens usando API
  */
 export const useTokenLibrary = () => {
   const [library, setLibrary] = useState<TokenLibrary>({
@@ -19,14 +21,78 @@ export const useTokenLibrary = () => {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  // Cargar librería desde IndexedDB
+  // Cargar carpetas desde localStorage (solo UI, no se persisten en backend)
+  const loadFolders = useCallback((): TokenFolder[] => {
+    try {
+      const stored = localStorage.getItem(FOLDERS_KEY);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error('Error loading folders:', error);
+    }
+    
+    // Carpetas por defecto
+    return [
+      {
+        id: 'default',
+        name: 'PJs',
+        color: '#3B82F6',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'monsters',
+        name: 'Monstruos',
+        color: '#EF4444',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'npcs',
+        name: 'NPCs',
+        color: '#10B981',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'objects',
+        name: 'Objetos',
+        color: '#F59E0B',
+        createdAt: new Date().toISOString(),
+      },
+    ];
+  }, []);
+
+  // Guardar carpetas en localStorage
+  const saveFolders = useCallback((folders: TokenFolder[]) => {
+    try {
+      localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
+    } catch (error) {
+      console.error('Error saving folders:', error);
+    }
+  }, []);
+
+  // Convertir Asset de API a TokenEntry
+  const assetToTokenEntry = useCallback((asset: Asset): TokenEntry => {
+    return {
+      id: asset.id,
+      name: asset.name || 'Unnamed Token',
+      folderId: asset.folder_id || 'default',
+      thumbnail: asset.thumbnail_url || '',
+      image: asset.storage_url, // Usar storage_url como image
+      originalSize: asset.original_size || 0,
+      compressedSize: asset.compressed_size || 0,
+      dimensions: asset.dimensions || { width: 0, height: 0 },
+      uploadDate: asset.created_at,
+      lastUsed: asset.last_used,
+      storage_url: asset.storage_url,
+      thumbnail_url: asset.thumbnail_url,
+    };
+  }, []);
+
+  // Cargar librería desde API
   const loadLibrary = useCallback(async () => {
     try {
-      // Migrar datos desde localStorage si es necesario
-      await migrateFromLocalStorage();
-
-      // Cargar carpetas
-      let folders = await tokenFolderDB.getAll();
+      // Cargar carpetas desde localStorage
+      let folders = loadFolders();
       
       // Si no hay carpetas, crear carpetas por defecto
       if (folders.length === 0) {
@@ -56,15 +122,15 @@ export const useTokenLibrary = () => {
             createdAt: new Date().toISOString(),
           },
         ];
-
-        await tokenFolderDB.putAll(defaultFolders);
         folders = defaultFolders;
+        saveFolders(folders);
       }
 
-      // Cargar tokens
-      const tokens = await tokenDB.getAll();
+      // Cargar tokens desde API
+      const assets = await assetsApi.getAll('token');
+      const tokens = assets.map(assetToTokenEntry);
 
-      // Obtener carpeta actual desde localStorage (preferencia del usuario)
+      // Obtener carpeta actual desde localStorage
       let currentFolder = localStorage.getItem(CURRENT_FOLDER_KEY) || 'default';
       if (!folders.find(f => f.id === currentFolder)) {
         currentFolder = 'default';
@@ -115,24 +181,11 @@ export const useTokenLibrary = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [loadFolders, saveFolders, assetToTokenEntry]);
 
   // Cargar librería al montar
   useEffect(() => {
     loadLibrary();
-  }, [loadLibrary]);
-
-  // Escuchar cambios en IndexedDB desde otras pestañas
-  useEffect(() => {
-    const handleStorageChange = () => {
-      loadLibrary();
-    };
-
-    window.addEventListener('tokenLibraryUpdated', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('tokenLibraryUpdated', handleStorageChange);
-    };
   }, [loadLibrary]);
 
   // Guardar carpeta actual en localStorage
@@ -140,7 +193,7 @@ export const useTokenLibrary = () => {
     localStorage.setItem(CURRENT_FOLDER_KEY, folderId);
   }, []);
 
-  // Crear nueva carpeta
+  // Crear nueva carpeta (solo en localStorage)
   const createFolder = useCallback(async (name: string) => {
     const newFolder: TokenFolder = {
       id: generateFolderId(),
@@ -149,16 +202,17 @@ export const useTokenLibrary = () => {
       createdAt: new Date().toISOString(),
     };
 
-    await tokenFolderDB.put(newFolder);
+    const folders = loadFolders();
+    folders.push(newFolder);
+    saveFolders(folders);
     
     setLibrary(prev => ({
       ...prev,
       folders: [...prev.folders, newFolder],
     }));
 
-    window.dispatchEvent(new Event('tokenLibraryUpdated'));
     return newFolder.id;
-  }, []);
+  }, [loadFolders, saveFolders]);
 
   // Cambiar carpeta activa
   const setCurrentFolder = useCallback((folderId: string) => {
@@ -169,87 +223,85 @@ export const useTokenLibrary = () => {
     }));
   }, [saveCurrentFolder]);
 
-  // Agregar token a carpeta
+  // Agregar token (subir a API)
   const addToken = useCallback(async (file: File, folderId?: string) => {
     try {
       const targetFolderId = folderId || library.currentFolder;
-      const tokenEntry = await processTokenImage(file);
-      tokenEntry.folderId = targetFolderId;
-
-      await tokenDB.put(tokenEntry);
+      
+      // Subir a API
+      const asset = await assetsApi.upload(file, 'token', targetFolderId, file.name.replace(/\.[^/.]+$/, ''));
+      
+      // Convertir a TokenEntry
+      const tokenEntry = assetToTokenEntry(asset);
 
       setLibrary(prev => ({
         ...prev,
         tokens: [...prev.tokens, tokenEntry],
       }));
 
-      window.dispatchEvent(new Event('tokenLibraryUpdated'));
       return tokenEntry;
     } catch (error) {
       console.error('Error agregando token:', error);
       throw error;
     }
-  }, [library.currentFolder]);
+  }, [library.currentFolder, assetToTokenEntry]);
 
   // Eliminar token
   const deleteToken = useCallback(async (tokenId: string) => {
-    await tokenDB.delete(tokenId);
+    try {
+      await assetsApi.delete(tokenId);
 
-    setLibrary(prev => ({
-      ...prev,
-      tokens: prev.tokens.filter(token => token.id !== tokenId),
-    }));
-
-    window.dispatchEvent(new Event('tokenLibraryUpdated'));
+      setLibrary(prev => ({
+        ...prev,
+        tokens: prev.tokens.filter(token => token.id !== tokenId),
+      }));
+    } catch (error) {
+      console.error('Error eliminando token:', error);
+      throw error;
+    }
   }, []);
 
   // Eliminar carpeta (y mover tokens a default)
   const deleteFolder = useCallback(async (folderId: string) => {
     if (folderId === 'default') return; // No eliminar carpeta por defecto
 
-    // Mover tokens a default
-    const tokensInFolder = await tokenDB.getByFolderId(folderId);
-    for (const token of tokensInFolder) {
-      token.folderId = 'default';
-      await tokenDB.put(token);
-    }
+    // Mover tokens a default (solo en estado local por ahora)
+    // TODO: Agregar endpoint para actualizar folder_id de assets
 
-    // Eliminar carpeta
-    await tokenFolderDB.delete(folderId);
+    // Eliminar carpeta de localStorage
+    const folders = loadFolders().filter(f => f.id !== folderId);
+    saveFolders(folders);
 
-    // Recargar librería
-    await loadLibrary();
-    window.dispatchEvent(new Event('tokenLibraryUpdated'));
-  }, [loadLibrary]);
+    // Actualizar tokens localmente
+    setLibrary(prev => ({
+      ...prev,
+      folders,
+      tokens: prev.tokens.map(token => 
+        token.folderId === folderId ? { ...token, folderId: 'default' } : token
+      ),
+    }));
+  }, [library.tokens, loadFolders, saveFolders]);
 
   // Mover token a otra carpeta
   const moveToken = useCallback(async (tokenId: string, newFolderId: string) => {
-    const token = await tokenDB.get(tokenId);
-    if (token) {
-      token.folderId = newFolderId;
-      await tokenDB.put(token);
-
-      setLibrary(prev => ({
-        ...prev,
-        tokens: prev.tokens.map(t => t.id === tokenId ? token : t),
-      }));
-
-      window.dispatchEvent(new Event('tokenLibraryUpdated'));
-    }
+    // Actualizar solo en estado local por ahora
+    // TODO: Agregar endpoint para actualizar folder_id
+    setLibrary(prev => ({
+      ...prev,
+      tokens: prev.tokens.map(t => 
+        t.id === tokenId ? { ...t, folderId: newFolderId } : t
+      ),
+    }));
   }, []);
 
-  // Actualizar último uso de un token
+  // Actualizar último uso de un token (no se persiste en backend por ahora)
   const markTokenAsUsed = useCallback(async (tokenId: string) => {
-    const token = await tokenDB.get(tokenId);
-    if (token) {
-      token.lastUsed = new Date().toISOString();
-      await tokenDB.put(token);
-
-      setLibrary(prev => ({
-        ...prev,
-        tokens: prev.tokens.map(t => t.id === tokenId ? token : t),
-      }));
-    }
+    setLibrary(prev => ({
+      ...prev,
+      tokens: prev.tokens.map(t => 
+        t.id === tokenId ? { ...t, lastUsed: new Date().toISOString() } : t
+      ),
+    }));
   }, []);
 
   // Obtener tokens de una carpeta
@@ -272,8 +324,8 @@ export const useTokenLibrary = () => {
   // Calcular estadísticas de storage
   const getStorageStats = useCallback(() => {
     const totalTokens = library.tokens.length;
-    const totalSize = library.tokens.reduce((sum, token) => sum + token.compressedSize, 0);
-    const totalOriginalSize = library.tokens.reduce((sum, token) => sum + token.originalSize, 0);
+    const totalSize = library.tokens.reduce((sum, token) => sum + (token.compressedSize || 0), 0);
+    const totalOriginalSize = library.tokens.reduce((sum, token) => sum + (token.originalSize || 0), 0);
 
     return {
       totalTokens,
@@ -285,9 +337,16 @@ export const useTokenLibrary = () => {
 
   // Limpiar toda la librería
   const clearLibrary = useCallback(async () => {
-    await tokenDB.clear();
-    await tokenFolderDB.clear();
+    // Eliminar todos los tokens de la API
+    for (const token of library.tokens) {
+      try {
+        await assetsApi.delete(token.id);
+      } catch (error) {
+        console.error(`Error eliminando token ${token.id}:`, error);
+      }
+    }
 
+    // Resetear carpetas
     const defaultFolders: TokenFolder[] = [
       {
         id: 'default',
@@ -315,7 +374,7 @@ export const useTokenLibrary = () => {
       },
     ];
 
-    await tokenFolderDB.putAll(defaultFolders);
+    saveFolders(defaultFolders);
     saveCurrentFolder('default');
 
     setLibrary({
@@ -324,9 +383,7 @@ export const useTokenLibrary = () => {
       tokens: [],
       currentFolder: 'default',
     });
-
-    window.dispatchEvent(new Event('tokenLibraryUpdated'));
-  }, [saveCurrentFolder]);
+  }, [library.tokens, saveFolders, saveCurrentFolder]);
 
   return {
     library,

@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MapLibrary, MapEntry, MapFolder } from '../types';
-import { processMapImage, generateFolderId, getRandomFolderColor } from '../utils/imageUtils';
-import { mapDB, mapFolderDB, migrateFromLocalStorage } from '../utils/indexedDB';
+import { generateFolderId, getRandomFolderColor } from '../utils/imageUtils';
+import { assetsApi } from '../api/assets';
+import { Asset } from '../api/assets';
 
 const LIBRARY_VERSION = '1.0.0';
 const CURRENT_FOLDER_KEY = 'kalakthul-current-map-folder';
+const FOLDERS_KEY = 'kalakthul-map-folders';
 
 /**
- * Hook para manejar la librería de mapas usando IndexedDB
+ * Hook para manejar la librería de mapas usando API
  */
 export const useMapLibrary = () => {
   const [library, setLibrary] = useState<MapLibrary>({
@@ -19,14 +21,58 @@ export const useMapLibrary = () => {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  // Cargar librería desde IndexedDB
+  // Cargar carpetas desde localStorage (solo UI, no se persisten en backend)
+  const loadFolders = useCallback((): MapFolder[] => {
+    try {
+      const stored = localStorage.getItem(FOLDERS_KEY);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error('Error loading folders:', error);
+    }
+    
+    // Carpeta por defecto
+    return [{
+      id: 'default',
+      name: 'Mapas',
+      color: '#3B82F6',
+      createdAt: new Date().toISOString(),
+    }];
+  }, []);
+
+  // Guardar carpetas en localStorage
+  const saveFolders = useCallback((folders: MapFolder[]) => {
+    try {
+      localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
+    } catch (error) {
+      console.error('Error saving folders:', error);
+    }
+  }, []);
+
+  // Convertir Asset de API a MapEntry
+  const assetToMapEntry = useCallback((asset: Asset): MapEntry => {
+    return {
+      id: asset.id,
+      name: asset.name || 'Unnamed Map',
+      folderId: asset.folder_id || 'default',
+      thumbnail: asset.thumbnail_url || '',
+      compressedImage: asset.storage_url, // Usar storage_url como compressedImage
+      originalSize: asset.original_size || 0,
+      compressedSize: asset.compressed_size || 0,
+      dimensions: asset.dimensions || { width: 0, height: 0 },
+      uploadDate: asset.created_at,
+      lastUsed: asset.last_used,
+      storage_url: asset.storage_url,
+      thumbnail_url: asset.thumbnail_url,
+    };
+  }, []);
+
+  // Cargar librería desde API
   const loadLibrary = useCallback(async () => {
     try {
-      // Migrar datos desde localStorage si es necesario
-      await migrateFromLocalStorage();
-
-      // Cargar carpetas
-      let folders = await mapFolderDB.getAll();
+      // Cargar carpetas desde localStorage
+      let folders = loadFolders();
       
       // Si no hay carpetas, crear carpeta por defecto
       if (folders.length === 0) {
@@ -36,14 +82,15 @@ export const useMapLibrary = () => {
           color: '#3B82F6',
           createdAt: new Date().toISOString(),
         };
-        await mapFolderDB.put(defaultFolder);
         folders = [defaultFolder];
+        saveFolders(folders);
       }
 
-      // Cargar mapas
-      const maps = await mapDB.getAll();
+      // Cargar mapas desde API
+      const assets = await assetsApi.getAll('map');
+      const maps = assets.map(assetToMapEntry);
 
-      // Obtener carpeta actual desde localStorage (preferencia del usuario)
+      // Obtener carpeta actual desde localStorage
       let currentFolder = localStorage.getItem(CURRENT_FOLDER_KEY) || 'default';
       if (!folders.find(f => f.id === currentFolder)) {
         currentFolder = 'default';
@@ -74,24 +121,11 @@ export const useMapLibrary = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [loadFolders, saveFolders, assetToMapEntry]);
 
   // Cargar librería al montar
   useEffect(() => {
     loadLibrary();
-  }, [loadLibrary]);
-
-  // Escuchar cambios en IndexedDB desde otras pestañas
-  useEffect(() => {
-    const handleStorageChange = () => {
-      loadLibrary();
-    };
-
-    window.addEventListener('mapLibraryUpdated', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('mapLibraryUpdated', handleStorageChange);
-    };
   }, [loadLibrary]);
 
   // Guardar carpeta actual en localStorage
@@ -99,7 +133,7 @@ export const useMapLibrary = () => {
     localStorage.setItem(CURRENT_FOLDER_KEY, folderId);
   }, []);
 
-  // Crear nueva carpeta
+  // Crear nueva carpeta (solo en localStorage)
   const createFolder = useCallback(async (name: string) => {
     const newFolder: MapFolder = {
       id: generateFolderId(),
@@ -108,16 +142,17 @@ export const useMapLibrary = () => {
       createdAt: new Date().toISOString(),
     };
 
-    await mapFolderDB.put(newFolder);
+    const folders = loadFolders();
+    folders.push(newFolder);
+    saveFolders(folders);
     
     setLibrary(prev => ({
       ...prev,
       folders: [...prev.folders, newFolder],
     }));
 
-    window.dispatchEvent(new Event('mapLibraryUpdated'));
     return newFolder.id;
-  }, []);
+  }, [loadFolders, saveFolders]);
 
   // Cambiar carpeta activa
   const setCurrentFolder = useCallback((folderId: string) => {
@@ -128,87 +163,88 @@ export const useMapLibrary = () => {
     }));
   }, [saveCurrentFolder]);
 
-  // Agregar mapa a carpeta
+  // Agregar mapa (subir a API)
   const addMap = useCallback(async (file: File, folderId?: string) => {
     try {
       const targetFolderId = folderId || library.currentFolder;
-      const mapEntry = await processMapImage(file);
-      mapEntry.folderId = targetFolderId;
-
-      await mapDB.put(mapEntry);
+      
+      // Subir a API
+      const asset = await assetsApi.upload(file, 'map', targetFolderId, file.name.replace(/\.[^/.]+$/, ''));
+      
+      // Convertir a MapEntry
+      const mapEntry = assetToMapEntry(asset);
 
       setLibrary(prev => ({
         ...prev,
         maps: [...prev.maps, mapEntry],
       }));
 
-      window.dispatchEvent(new Event('mapLibraryUpdated'));
       return mapEntry;
     } catch (error) {
       console.error('Error agregando mapa:', error);
       throw error;
     }
-  }, [library.currentFolder]);
+  }, [library.currentFolder, assetToMapEntry]);
 
   // Eliminar mapa
   const deleteMap = useCallback(async (mapId: string) => {
-    await mapDB.delete(mapId);
+    try {
+      await assetsApi.delete(mapId);
 
-    setLibrary(prev => ({
-      ...prev,
-      maps: prev.maps.filter(map => map.id !== mapId),
-    }));
-
-    window.dispatchEvent(new Event('mapLibraryUpdated'));
+      setLibrary(prev => ({
+        ...prev,
+        maps: prev.maps.filter(map => map.id !== mapId),
+      }));
+    } catch (error) {
+      console.error('Error eliminando mapa:', error);
+      throw error;
+    }
   }, []);
 
   // Eliminar carpeta (y mover mapas a default)
   const deleteFolder = useCallback(async (folderId: string) => {
     if (folderId === 'default') return; // No eliminar carpeta por defecto
 
-    // Mover mapas a default
-    const mapsInFolder = await mapDB.getByFolderId(folderId);
-    for (const map of mapsInFolder) {
-      map.folderId = 'default';
-      await mapDB.put(map);
-    }
+    // Mover mapas a default (actualizar en API)
+    const mapsInFolder = library.maps.filter(map => map.folderId === folderId);
+    // Nota: El backend no soporta actualizar folder_id directamente,
+    // así que solo actualizamos el estado local por ahora
+    // TODO: Agregar endpoint para actualizar folder_id de assets
 
-    // Eliminar carpeta
-    await mapFolderDB.delete(folderId);
+    // Eliminar carpeta de localStorage
+    const folders = loadFolders().filter(f => f.id !== folderId);
+    saveFolders(folders);
 
-    // Recargar librería
-    await loadLibrary();
-    window.dispatchEvent(new Event('mapLibraryUpdated'));
-  }, [loadLibrary]);
+    // Actualizar mapas localmente
+    setLibrary(prev => ({
+      ...prev,
+      folders,
+      maps: prev.maps.map(map => 
+        map.folderId === folderId ? { ...map, folderId: 'default' } : map
+      ),
+    }));
+  }, [library.maps, loadFolders, saveFolders]);
 
   // Mover mapa a otra carpeta
   const moveMap = useCallback(async (mapId: string, newFolderId: string) => {
-    const map = await mapDB.get(mapId);
-    if (map) {
-      map.folderId = newFolderId;
-      await mapDB.put(map);
-
-      setLibrary(prev => ({
-        ...prev,
-        maps: prev.maps.map(m => m.id === mapId ? map : m),
-      }));
-
-      window.dispatchEvent(new Event('mapLibraryUpdated'));
-    }
+    // Actualizar solo en estado local por ahora
+    // TODO: Agregar endpoint para actualizar folder_id
+    setLibrary(prev => ({
+      ...prev,
+      maps: prev.maps.map(m => 
+        m.id === mapId ? { ...m, folderId: newFolderId } : m
+      ),
+    }));
   }, []);
 
-  // Actualizar último uso de un mapa
+  // Actualizar último uso de un mapa (no se persiste en backend por ahora)
   const markMapAsUsed = useCallback(async (mapId: string) => {
-    const map = await mapDB.get(mapId);
-    if (map) {
-      map.lastUsed = new Date().toISOString();
-      await mapDB.put(map);
-
-      setLibrary(prev => ({
-        ...prev,
-        maps: prev.maps.map(m => m.id === mapId ? map : m),
-      }));
-    }
+    setLibrary(prev => ({
+      ...prev,
+      maps: prev.maps.map(m => 
+        m.id === mapId ? { ...m, lastUsed: new Date().toISOString() } : m
+      ),
+    }));
   }, []);
 
   // Obtener mapas de una carpeta
@@ -226,8 +262,8 @@ export const useMapLibrary = () => {
   // Calcular estadísticas de storage
   const getStorageStats = useCallback(() => {
     const totalMaps = library.maps.length;
-    const totalSize = library.maps.reduce((sum, map) => sum + map.compressedSize, 0);
-    const totalOriginalSize = library.maps.reduce((sum, map) => sum + map.originalSize, 0);
+    const totalSize = library.maps.reduce((sum, map) => sum + (map.compressedSize || 0), 0);
+    const totalOriginalSize = library.maps.reduce((sum, map) => sum + (map.originalSize || 0), 0);
 
     return {
       totalMaps,
@@ -239,9 +275,16 @@ export const useMapLibrary = () => {
 
   // Limpiar toda la librería
   const clearLibrary = useCallback(async () => {
-    await mapDB.clear();
-    await mapFolderDB.clear();
+    // Eliminar todos los mapas de la API
+    for (const map of library.maps) {
+      try {
+        await assetsApi.delete(map.id);
+      } catch (error) {
+        console.error(`Error eliminando mapa ${map.id}:`, error);
+      }
+    }
 
+    // Resetear carpetas
     const defaultFolder: MapFolder = {
       id: 'default',
       name: 'Mapas',
@@ -249,7 +292,7 @@ export const useMapLibrary = () => {
       createdAt: new Date().toISOString(),
     };
 
-    await mapFolderDB.put(defaultFolder);
+    saveFolders([defaultFolder]);
     saveCurrentFolder('default');
 
     setLibrary({
@@ -258,9 +301,7 @@ export const useMapLibrary = () => {
       maps: [],
       currentFolder: 'default',
     });
-
-    window.dispatchEvent(new Event('mapLibraryUpdated'));
-  }, [saveCurrentFolder]);
+  }, [library.maps, saveFolders, saveCurrentFolder]);
 
   return {
     library,

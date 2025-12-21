@@ -8,6 +8,7 @@ import { useTokenLibrary } from './hooks/useTokenLibrary';
 import { loadImageAsBase64 } from './utils/canvasUtils';
 import { pixelToGrid } from './utils/gridUtils';
 import { MapState, ImageBounds, ZoomState, EffectType, TokenEntry } from './types';
+import { scenesApi } from './api/scenes';
 import MapCanvas from './components/MapCanvas';
 import EffectRenderer from './components/EffectRenderer';
 import TokenRenderer from './components/TokenRenderer';
@@ -16,7 +17,7 @@ import Header from './components/Header';
 import { FullscreenLayout } from './components/FullscreenLayout';
 import './App.css';
 
-const STORAGE_KEY = 'ttrpg-map-state';
+const SCENE_ID_KEY = 'ttrpg-scene-id';
 
 function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -24,28 +25,79 @@ function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Cargar estado inicial desde localStorage
+  // Cargar estado inicial desde API
   const [initialState, setInitialState] = useState<MapState | null>(null);
+  const [currentSceneId, setCurrentSceneId] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      console.log('[App] Loading from localStorage:', saved ? 'Found data' : 'No data');
-      if (saved) {
-        const parsed = JSON.parse(saved) as MapState;
-        console.log('[App] Parsed state:', {
-          hasMapImage: !!parsed.mapImage,
-          hasImageBounds: !!parsed.imageBounds,
-          hasZoom: !!parsed.zoom,
-          effectsCount: parsed.effects?.length || 0
-        });
-        setInitialState(parsed);
+    const loadScene = async () => {
+      try {
+        const savedSceneId = localStorage.getItem(SCENE_ID_KEY);
+        console.log('[App] Loading scene from API:', savedSceneId || 'No scene ID');
+        
+        if (savedSceneId) {
+          try {
+            const scene = await scenesApi.getById(savedSceneId);
+            console.log('[App] Loaded scene:', {
+              id: scene.id,
+              hasBackground: !!scene.background_url,
+              tokensCount: scene.tokens?.length || 0,
+              effectsCount: scene.effects?.length || 0
+            });
+
+            setCurrentSceneId(scene.id);
+            
+            // Convertir escena a MapState
+            const mapState: MapState = {
+              mapImage: scene.background_url || null,
+              imageBounds: scene.image_bounds,
+              grid: scene.grid_config || {
+                rows: 10,
+                columns: 10,
+                opacity: 0.5,
+                color: '#000000',
+                visible: true,
+              },
+              effects: scene.effects || [],
+              selectedEffectId: null,
+              zoom: scene.zoom_state || { level: 1, panX: 0, panY: 0 },
+              fogOfWar: scene.fog_data || { isEnabled: false, darknessAreas: [] },
+              particleLayer: { isEnabled: false, particleType: null, intensity: 0.5, speed: 0.5 },
+              tokens: scene.tokens?.map((t: any) => ({
+                id: t.id,
+                tokenEntryId: t.asset_id || t.tokenEntryId,
+                x: t.x,
+                y: t.y,
+                gridX: t.grid_x || t.gridX || 0,
+                gridY: t.grid_y || t.gridY || 0,
+                width: t.width || 50,
+                height: t.height || 50,
+                name: t.name,
+                opacity: t.opacity || 1,
+                token_image_url: t.token_image_url,
+                asset_id: t.asset_id,
+              })) || [],
+              selectedTokenId: null,
+            };
+            
+            setInitialState(mapState);
+          } catch (error) {
+            console.error('[App] Error loading scene from API:', error);
+            // Si falla, crear nueva escena
+            setInitialState(null);
+          }
+        } else {
+          setInitialState(null);
+        }
+      } catch (error) {
+        console.error('[App] Error loading scene:', error);
+        setInitialState(null);
+      } finally {
+        setIsInitialized(true);
       }
-      setIsInitialized(true);
-    } catch (error) {
-      console.error('[App] Error loading from localStorage:', error);
-      setIsInitialized(true);
-    }
+    };
+
+    loadScene();
   }, []);
 
   const { grid, setRows, setColumns, setOpacity, setColor, toggleVisibility } = useGrid(initialState?.grid);
@@ -168,9 +220,33 @@ function App() {
     }
   };
 
-  const handleMapSelect = (mapEntry: any) => {
-    setMapImage(mapEntry.compressedImage);
+  const handleMapSelect = async (mapEntry: any) => {
+    // Usar storage_url si está disponible, sino compressedImage (legacy)
+    const imageUrl = mapEntry.storage_url || mapEntry.compressedImage;
+    setMapImage(imageUrl);
     setCurrentMapId(mapEntry.id);
+    
+    // Actualizar o crear escena con el nuevo background
+    try {
+      if (currentSceneId) {
+        await scenesApi.update(currentSceneId, {
+          background_asset_id: mapEntry.id,
+          zoom_state: { level: 1, panX: 0, panY: 0 },
+        });
+      } else {
+        const newScene = await scenesApi.create({
+          background_asset_id: mapEntry.id,
+          grid_config: grid,
+          fog_data: fogState,
+          zoom_state: { level: 1, panX: 0, panY: 0 },
+        });
+        setCurrentSceneId(newScene.id);
+        localStorage.setItem(SCENE_ID_KEY, newScene.id);
+      }
+    } catch (error) {
+      console.error('Error updating scene:', error);
+    }
+    
     // Reset zoom, effects and fog when changing maps
     setZoom({ level: 1, panX: 0, panY: 0 });
     // Reset effects and fog for clean slate on new map
@@ -403,28 +479,49 @@ function App() {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isPresentationMode]);
 
-  // Persistir estado en localStorage (solo después de inicialización)
+  // Persistir estado en API (solo después de inicialización)
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!isInitialized || !currentSceneId) return;
 
-    const state: MapState = {
-      mapImage,
-      imageBounds,
-      grid,
-      effects,
-      selectedEffectId,
-      zoom,
-      fogOfWar: fogState,
-      particleLayer: particleState,
-      tokens,
-      selectedTokenId,
+    const saveScene = async () => {
+      try {
+        await scenesApi.update(currentSceneId, {
+          grid_config: grid,
+          fog_data: fogState,
+          image_bounds: imageBounds,
+          zoom_state: zoom,
+        });
+      } catch (error) {
+        console.error('Error saving scene to API:', error);
+      }
     };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (error) {
-      console.error('Error saving to localStorage:', error);
-    }
-  }, [mapImage, imageBounds, grid, effects, selectedEffectId, zoom, fogState, particleState, tokens, selectedTokenId, isInitialized]);
+
+    // Debounce para no hacer demasiadas llamadas
+    const timeoutId = setTimeout(saveScene, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [grid, fogState, imageBounds, zoom, isInitialized, currentSceneId]);
+
+  // Crear escena inicial si no existe
+  useEffect(() => {
+    if (!isInitialized || currentSceneId) return;
+
+    const createInitialScene = async () => {
+      try {
+        const scene = await scenesApi.create({
+          grid_config: grid,
+          fog_data: fogState,
+          image_bounds: imageBounds,
+          zoom_state: zoom,
+        });
+        setCurrentSceneId(scene.id);
+        localStorage.setItem(SCENE_ID_KEY, scene.id);
+      } catch (error) {
+        console.error('Error creating initial scene:', error);
+      }
+    };
+
+    createInitialScene();
+  }, [isInitialized, currentSceneId, grid, fogState, imageBounds, zoom]);
 
 
   // Memoizar los callbacks para evitar re-renders innecesarios
@@ -586,12 +683,14 @@ function App() {
               <div className="tokens-layer">
                 {tokens.map((token) => {
                   const tokenEntry = getTokenById(token.tokenEntryId);
-                  if (!tokenEntry) return null;
+                  // Usar token_image_url desde API si está disponible, sino desde tokenEntry
+                  const tokenImage = token.token_image_url || tokenEntry?.image || tokenEntry?.storage_url;
+                  if (!tokenImage) return null;
                   return (
                     <TokenRenderer
                       key={token.id}
                       token={token}
-                      tokenImage={tokenEntry.image}
+                      tokenImage={tokenImage}
                       imageBounds={imageBounds}
                       canvasWidth={currentCanvasDimensions.width}
                       canvasHeight={currentCanvasDimensions.height}

@@ -60,17 +60,35 @@ export interface Effect {
 }
 
 // Sistema de Librería de Mapas
+// Legacy interface (Base64) - mantenido para compatibilidad
 export interface MapEntry {
   id: string;
   name: string;
   folderId: string;
-  thumbnail: string;        // base64 miniatura pequeña (200x200px)
-  compressedImage: string;  // imagen comprimida para uso (80% calidad)
+  thumbnail: string;        // base64 miniatura pequeña (200x200px) - legacy
+  compressedImage: string;  // imagen comprimida para uso (80% calidad) - legacy
   originalSize: number;     // tamaño original en bytes
   compressedSize: number;   // tamaño comprimido en bytes
   dimensions: { width: number; height: number }; // dimensiones originales
   uploadDate: string;       // ISO string
   lastUsed: string;         // ISO string
+  // Nuevos campos para API (opcionales para compatibilidad)
+  storage_url?: string;     // URL del archivo en MinIO/S3
+  thumbnail_url?: string;   // URL de la miniatura en MinIO/S3
+}
+
+// Nueva interfaz para assets desde API
+export interface MapEntryApi {
+  id: string;
+  name: string;
+  folderId: string;
+  storage_url: string;      // URL del archivo en MinIO/S3
+  thumbnail_url: string | null; // URL de la miniatura
+  originalSize: number | null;
+  compressedSize: number | null;
+  dimensions: { width: number; height: number } | null;
+  uploadDate: string;       // created_at desde API
+  lastUsed: string;         // last_used desde API
 }
 
 export interface MapFolder {
@@ -111,17 +129,35 @@ export interface ParticleLayerState {
 }
 
 // Sistema de Tokens
+// Legacy interface (Base64) - mantenido para compatibilidad
 export interface TokenEntry {
   id: string;
   name: string;
   folderId: string;
-  thumbnail: string;        // base64 miniatura pequeña (100x100px)
-  image: string;            // imagen base64 para uso
+  thumbnail: string;        // base64 miniatura pequeña (100x100px) - legacy
+  image: string;            // imagen base64 para uso - legacy
   originalSize: number;     // tamaño original en bytes
   compressedSize: number;   // tamaño comprimido en bytes
   dimensions: { width: number; height: number }; // dimensiones originales
   uploadDate: string;       // ISO string
   lastUsed: string;         // ISO string
+  // Nuevos campos para API (opcionales para compatibilidad)
+  storage_url?: string;     // URL del archivo en MinIO/S3
+  thumbnail_url?: string;   // URL de la miniatura en MinIO/S3
+}
+
+// Nueva interfaz para assets desde API
+export interface TokenEntryApi {
+  id: string;
+  name: string;
+  folderId: string;
+  storage_url: string;      // URL del archivo en MinIO/S3
+  thumbnail_url: string | null; // URL de la miniatura
+  originalSize: number | null;
+  compressedSize: number | null;
+  dimensions: { width: number; height: number } | null;
+  uploadDate: string;       // created_at desde API
+  lastUsed: string;         // last_used desde API
 }
 
 export interface TokenFolder {
@@ -140,7 +176,7 @@ export interface TokenLibrary {
 
 export interface Token {
   id: string;
-  tokenEntryId: string;     // ID del TokenEntry en la librería
+  tokenEntryId: string;     // ID del TokenEntry en la librería (o asset_id desde API)
   x: number;                // Posición X en píxeles del canvas (centro)
   y: number;                // Posición Y en píxeles del canvas (centro)
   gridX: number;            // Posición X en celdas de la grilla
@@ -149,5 +185,8 @@ export interface Token {
   height: number;           // Alto del token en píxeles
   name?: string;            // Nombre opcional del token
   opacity: number;           // Opacidad del token (0-1)
+  // Campos adicionales desde API
+  token_image_url?: string; // URL de la imagen del token (desde API)
+  asset_id?: string;        // ID del asset (desde API)
 }
 

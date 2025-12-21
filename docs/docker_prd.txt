@@ -1,0 +1,159 @@
+Product Requirements Document (PRD): DnD Mapper - Cloud Foundation & Dockerization
+Versión: 1.1 Estado: Aprobado para Desarrollo Autor: Emmel Inyenier (AI Partner) Fecha: 21 de Diciembre, 2025
+
+1. Resumen Ejecutivo
+El objetivo de este documento es definir la transformación arquitectónica de DnD Mapper, pasando de ser una aplicación VTT (Virtual Tabletop) puramente client-side a una aplicación web contenerizada (Docker) con arquitectura cliente-servidor.
+
+Esta migración es el prerrequisito técnico para:
+
+Habilitar la persistencia de datos remota (independiente del dispositivo del usuario).
+
+Solucionar cuellos de botella de rendimiento causados por el almacenamiento de imágenes en Base64.
+
+Sentar las bases para la monetización (SaaS/Suscripción) y el multijugador en tiempo real.
+
+2. Alcance del Proyecto (MVP Infraestructura)
+El alcance se limita a reemplazar la capa de persistencia. La lógica de renderizado en Canvas (src/utils/canvasRender.ts), el sistema de grillas y la niebla de guerra (useFogOfWar.ts) se mantendrán intactos en el frontend, pero dejarán de leer/escribir en localStorage e IndexedDB.
+
+Fuera del Alcance (Fase 1)
+Sistema de pagos (Stripe/Patreon) - Se prepara el campo subscription_tier pero no la pasarela.
+
+Lógica de juego compleja (reglas de D&D) - El sistema sigue siendo agnóstico al sistema de juego.
+
+3. Arquitectura del Sistema
+3.1 Diagrama de Contenedores (Docker Compose)
+El entorno de desarrollo local replicará la arquitectura de nube futura mediante 4 servicios orquestados:
+
+Frontend (dnd-client):
+
+Tech: React v19, Vite.
+
+Cambio: Se eliminan los hooks de persistencia local (useMapLibrary con IndexedDB) y se reemplazan por llamadas API REST.
+
+Backend (dnd-api):
+
+Tech: Node.js + TypeScript (Express/Fastify).
+
+Rol: Autenticación, gestión de subidas, orquestación de base de datos.
+
+Base de Datos (dnd-postgres):
+
+Tech: PostgreSQL 15+.
+
+Rol: Almacenamiento relacional de usuarios, metadatos de mapas y estado de sesiones.
+
+Object Storage (dnd-storage):
+
+Tech: MinIO (S3 Compatible).
+
+Rol: Almacenamiento de binarios (imágenes de mapas y tokens) accesibles vía URL pública.
+
+3.2 Estrategia de Datos (Migración de Tipos)
+Se refactorizará src/types/index.ts para separar datos pesados de metadatos ligeros.
+
+Concepto	Implementación Actual (Legacy)	Nueva Implementación (Cloud/Docker)
+Imágenes	String Base64 dentro del JSON (compressedImage).	Archivo .webp en MinIO/S3. DB guarda solo la URL (storage_url).
+Librería	Array gigante en JSON (MapLibrary).	Tabla SQL assets paginada.
+Sesión	Objeto monolítico MapState.	Relación SQL: scenes (config) + active_tokens (entidades móviles).
+Niebla	Objeto FogOfWarState (vectores).	Columna jsonb en tabla scenes (los vectores son eficientes, se mantienen).
+
+Export to Sheets
+
+4. Esquema de Base de Datos (PostgreSQL)
+El backend implementará el siguiente esquema relacional para garantizar integridad y velocidad:
+
+SQL
+
+-- 1. Usuarios (Dueños de la data)
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    subscription_tier VARCHAR(50) DEFAULT 'free'
+);
+
+-- 2. Activos (Referencias a MinIO/S3 - Reemplaza Base64)
+CREATE TABLE assets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id),
+    type VARCHAR(20) NOT NULL, -- 'map' | 'token'
+    storage_url TEXT NOT NULL, -- URL pública del archivo
+    thumbnail_url TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 3. Escenas (Configuración estática del tablero)
+CREATE TABLE scenes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id),
+    background_asset_id UUID REFERENCES assets(id),
+    grid_config JSONB, -- Configuración de filas/cols/color
+    fog_data JSONB, -- Polígonos de niebla (vectores)
+    image_bounds JSONB -- Posición/Zoom inicial
+);
+
+-- 4. Tokens Activos (Entidades dinámicas para WebSockets)
+CREATE TABLE active_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    scene_id UUID REFERENCES scenes(id) ON DELETE CASCADE,
+    asset_id UUID REFERENCES assets(id), -- Qué imagen usa
+    x NUMERIC NOT NULL,
+    y NUMERIC NOT NULL,
+    properties JSONB -- HP, notas, visibilidad
+);
+5. Requerimientos Funcionales de API
+5.1 Gestión de Activos (Upload Pipeline)
+Endpoint: POST /api/assets/upload
+
+Flujo:
+
+Recibe multipart/form-data (imagen).
+
+Backend procesa imagen con sharp (Node.js) -> Convierte a WebP (optimización de costos/red).
+
+Sube archivo a MinIO bucket dnd-assets.
+
+Guarda registro en tabla assets.
+
+Retorna la URL del activo.
+
+5.2 Gestión de Estado (Game Load)
+Endpoint: GET /api/scenes/:id
+
+Respuesta Optimizada:
+
+Retorna la configuración de la escena (grid, fog).
+
+Retorna la URL del fondo (background_asset_id -> URL).
+
+Retorna la lista inicial de active_tokens.
+
+Nota: El cliente descarga las imágenes en paralelo usando las URLs, evitando bloquear el hilo principal con decodificación Base64.
+
+6. Plan de Ejecución (Docker)
+Paso 1: Configuración de Entorno (Docker Compose)
+Crear docker-compose.yml que levante:
+
+PostgreSQL (Puerto 5432).
+
+MinIO (Puertos 9000/9001) + Script de inicialización de bucket público.
+
+Paso 2: Backend Scaffold
+Inicializar proyecto Node.js/TypeScript dentro de /backend:
+
+Instalar dependencias: express, pg (o ORM Prisma), multer (uploads), minio (cliente S3).
+
+Configurar conexión a DB y MinIO usando variables de entorno del Docker.
+
+Paso 3: Refactorización Frontend
+Modificar src/api/ en el cliente para:
+
+Reemplazar useMapLibrary.ts para que haga fetch al backend en lugar de abrir IndexedDB.
+
+Actualizar componentes de imagen (<img src... />) para usar las nuevas URLs remotas en lugar de los strings data:image/png;base64.
+
+7. Criterios de Éxito
+Cero Base64: Ninguna imagen mayor a 50KB se transfiere como string en JSON.
+
+Persistencia Real: Al reiniciar el contenedor de Docker (simulando caída de servidor), los datos se mantienen en el volumen de Postgres/MinIO.
+
+Paridad Visual: El renderizado del Canvas se ve idéntico al cargar desde la API que desde LocalStorage.
