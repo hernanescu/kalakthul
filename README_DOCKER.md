@@ -65,7 +65,23 @@ docker-compose up -d
 - **MinIO Console**: http://localhost:9001 (usuario: minioadmin, password: minioadmin)
 - **PostgreSQL**: localhost:5432
 
-## Comandos Útiles
+## Comandos Rápidos (Makefile)
+
+Para facilitar la gestión del entorno, se ha incluido un `Makefile` con comandos comunes:
+
+- `make up`: Iniciar todos los servicios en segundo plano.
+- `make down`: Detener los servicios.
+- `make restart`: Reiniciar todos los servicios.
+- `make build`: Reconstruir imágenes e iniciar servicios.
+- `make logs`: Ver logs de todos los servicios.
+- `make logs-api`: Ver logs del backend.
+- `make logs-client`: Ver logs del frontend.
+- `make shell-api`: Abrir terminal en el contenedor del backend.
+- `make shell-client`: Abrir terminal en el contenedor del frontend.
+- `make db-shell`: Acceder a la consola SQL de la base de datos.
+- `make clean`: Detener servicios y eliminar volúmenes (reset completo).
+
+## Comandos Útiles (Docker Compose manual)
 
 ### Ver logs
 ```bash
@@ -130,7 +146,11 @@ Si algún puerto está en uso, puedes cambiarlo en `docker-compose.yml` o en `.e
 Asegúrate de que el servicio `dnd-postgres` esté completamente iniciado antes de que `dnd-api` intente conectarse. El healthcheck debería manejar esto automáticamente.
 
 ### Error al subir imágenes
-Verifica que MinIO esté corriendo y que el bucket `dnd-assets` exista. Puedes verificar esto en la consola de MinIO (http://localhost:9001).
+Verifica que MinIO esté corriendo y que el bucket `dnd-assets` exista.
+El límite de subida de archivos se ha configurado a **50MB**.
+
+### Error de usuario no encontrado (Foreign Key)
+El sistema incluye una migración automática (`002_add_default_user.sql`) que crea un usuario invitado por defecto (`00000000-0000-0000-0000-000000000000`) para evitar errores de integridad referencial. Si este error persiste, puedes ejecutar `make clean` y reiniciar para volver a aplicar las migraciones.
 
 ### Limpiar todo y empezar de nuevo
 ```bash
